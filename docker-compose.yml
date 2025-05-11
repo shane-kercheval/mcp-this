@@ -1,0 +1,10 @@
+services:
+  bash:
+    build: .
+    working_dir: /code
+    volumes:
+      - .:/code
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # e.g. 'http://host.docker.internal:1234/v1' in the container rather than 'http://localhost:1234/v1'
