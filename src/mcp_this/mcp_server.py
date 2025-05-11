@@ -100,7 +100,7 @@ async def execute_command(cmd: str, working_dir: str = '') -> str:
 
         # If stdout is empty, check stderr for any warning messages
         if not stdout_text and stderr_text:
-            return f"Command produced no output but returned messages: {stderr_text}"
+            return f"Command produced no output, but stderr: {stderr_text}"
 
         return stdout_text
     except Exception as e:

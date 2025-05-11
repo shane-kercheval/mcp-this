@@ -25,7 +25,7 @@ toolsets:
   file:
     description: "File operations and transformations"
     tools:
-      find-and-count:
+      find-and-count-lines:
         description: "Find files matching a pattern and count lines in each file"
         help_text: |
           Find files matching a pattern and count the number of lines in each file.
@@ -35,8 +35,8 @@ toolsets:
           2. Count lines in each matching file
 
           Examples:
-            find-and-count "*.txt"
-            find-and-count "src/*.py"
+            find-and-count-lines "*.txt"
+            find-and-count-lines "src/*.py"
         execution:
           command: "find . -name \"<<pattern>>\" -type f -print0 | xargs -0 -r wc -l 2>/dev/null || echo 'No matching files found'"
           uses_working_dir: true
@@ -61,7 +61,7 @@ toolsets:
             grep-and-extract "function main" "*.js" 3
             grep-and-extract "import pandas" "*.py" 2
         execution:
-          command: "grep -r -n '<<search_pattern>>' \"<<file_pattern>>\" | xargs -I{} sh -c 'FILE=$(echo {} | cut -d: -f1); LINE=$(echo {} | cut -d: -f2); sed -n \"$((LINE-<<context_lines>>)),+$((<<context_lines>>*2))p\" \"$FILE\"'"
+          command: "for match in $(grep -r -n --include=\"<<file_pattern>>\" '<<search_pattern>>' . | awk -F: '{print $1\":\"$2}'); do file=$(echo $match | cut -d: -f1); line=$(echo $match | cut -d: -f2); printf \"\\n==== Context for %s at line %s ====\\n\" \"$file\" \"$line\"; sed -n \"$((line-<<context_lines>>)),+$((<<context_lines>>*2+1))p\" \"$file\"; echo; done || echo 'No matching files or patterns found'"
           uses_working_dir: true
         parameters:
           search_pattern:
