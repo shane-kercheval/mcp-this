@@ -1,0 +1,100 @@
+toolsets:
+  curl:
+    description: "Transfer data from or to a server"
+    tools:
+      curl:
+        description: "Make HTTP requests"
+        help_text: |
+          Transfer data from or to a server using various protocols.
+          curl is a tool to transfer data from or to a server using supported protocols.
+          
+          Usage: curl [options...] <url>
+          
+          Examples:
+            curl https://example.com
+            curl -o output.html https://example.com
+            curl -X POST -d "data" https://api.example.com
+        execution:
+          command: "curl <<arguments>>"
+          uses_working_dir: false
+        parameters:
+          arguments:
+            description: "Complete curl arguments including options and URL"
+            required: true
+  
+  file:
+    description: "File operations and transformations"
+    tools:
+      find-and-count:
+        description: "Find files matching a pattern and count lines in each file"
+        help_text: |
+          Find files matching a pattern and count the number of lines in each file.
+
+          This tool chains together 'find' and 'wc' commands to:
+          1. Find files matching the specified pattern
+          2. Count lines in each matching file
+
+          Examples:
+            find-and-count "*.txt"
+            find-and-count "src/*.py"
+        execution:
+          command: "find . -name \"<<pattern>>\" -type f -print0 | xargs -0 -r wc -l 2>/dev/null || echo 'No matching files found'"
+          uses_working_dir: true
+        parameters:
+          pattern:
+            description: "File pattern to search for (e.g., '*.txt', 'src/*.py')"
+            required: true
+          working_dir:
+            description: "Directory to search in (e.g., '/path/to/directory')"
+            required: false
+
+      grep-and-extract:
+        description: "Search for a pattern and extract matching files with context"
+        help_text: |
+          Search for a pattern in files and extract parts of matching files with context.
+
+          This tool chains 'grep' and 'sed' to:
+          1. Find lines matching the search pattern
+          2. Extract a specified number of lines before and after each match
+
+          Examples:
+            grep-and-extract "function main" "*.js" 3
+            grep-and-extract "import pandas" "*.py" 2
+        execution:
+          command: "grep -r -n '<<search_pattern>>' \"<<file_pattern>>\" | xargs -I{} sh -c 'FILE=$(echo {} | cut -d: -f1); LINE=$(echo {} | cut -d: -f2); sed -n \"$((LINE-<<context_lines>>)),+$((<<context_lines>>*2))p\" \"$FILE\"'"
+          uses_working_dir: true
+        parameters:
+          search_pattern:
+            description: "Pattern to search for in files"
+            required: true
+          file_pattern:
+            description: "File pattern to search in (e.g., '*.py', 'src/')"
+            required: true
+          context_lines:
+            description: "Number of context lines to extract before and after each match"
+            required: true
+          working_dir:
+            description: "Directory to search in (e.g., '/path/to/directory')"
+            required: false
+      
+      tail-follow:
+        description: "Display the last part of a file and follow its updates"
+        help_text: |
+          Display the last part of a file and follow its updates in real-time.
+
+          Useful for monitoring log files or other files that are being updated.
+
+          Example: tail-follow log.txt 20
+        execution:
+          command: "tail -n <<lines>> -f \"<<file>>\""
+          uses_working_dir: true
+        parameters:
+          file:
+            description: "File to monitor"
+            required: true
+          lines:
+            description: "Number of lines to show initially"
+            required: false
+          working_dir:
+            description: "Directory to run the command in (e.g., '/path/to/directory')"
+            required: false

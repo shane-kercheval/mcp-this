@@ -11,7 +11,7 @@ import yaml
 import asyncio
 import subprocess
 import re
-from typing import Optional, Dict, Any
+from typing import Dict, Any  # Removed Optional since we're not using it anymore
 
 from mcp.server.fastmcp import FastMCP
 
@@ -43,7 +43,7 @@ except Exception as e:
 def build_command(command_template: str, parameters: Dict[str, Any]) -> str:
     """Build a command from a template and parameters"""
     result = command_template
-    
+
     # Replace each parameter placeholder with its value
     for param_name, param_value in parameters.items():
         placeholder = f"<<{param_name}>>"
@@ -52,37 +52,57 @@ def build_command(command_template: str, parameters: Dict[str, Any]) -> str:
         else:
             # Remove placeholder if no value provided
             result = result.replace(placeholder, "")
-    
+
     # Clean up any leftover placeholders (optional parameters not provided)
     result = result.replace("<<", "").replace(">>", "")
-    
+
     # Clean up multiple spaces
     result = " ".join(result.split())
-    
+
     return result
 
 # Execute a command with a working directory
-async def execute_command(cmd: str, working_dir: Optional[str] = None) -> str:
+async def execute_command(cmd: str, working_dir: str = '') -> str:
     """Execute a shell command"""
     try:
         print(f"Executing command: {cmd}")
         if working_dir:
             print(f"Working directory: {working_dir}")
-        
+
+        # Check if the working directory exists and is accessible
+        if working_dir:
+            import os
+            if not os.path.exists(working_dir):
+                return f"Error: Working directory does not exist: {working_dir}"
+            if not os.path.isdir(working_dir):
+                return f"Error: Working directory is not a directory: {working_dir}"
+            if not os.access(working_dir, os.R_OK):
+                return f"Error: Working directory is not readable: {working_dir}"
+
+        # If working_dir is empty or None, use None for cwd to use current directory
+        effective_cwd = None if not working_dir else working_dir
+
         process = await asyncio.create_subprocess_shell(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            cwd=working_dir
+            cwd=effective_cwd
         )
-        
+
         stdout, stderr = await process.communicate()
-        
+
+        stdout_text = stdout.decode() if stdout else ""
+        stderr_text = stderr.decode() if stderr else ""
+
         if process.returncode != 0:
-            error_message = stderr.decode() if stderr else "Unknown error"
+            error_message = stderr_text if stderr_text else "Unknown error"
             return f"Error executing command: {error_message}"
-        
-        return stdout.decode()
+
+        # If stdout is empty, check stderr for any warning messages
+        if not stdout_text and stderr_text:
+            return f"Command produced no output but returned messages: {stderr_text}"
+
+        return stdout_text
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -132,12 +152,15 @@ if 'toolsets' in config:
                     if param_config.get('required', False):
                         param_parts.append(f"{param_name}")
                     else:
-                        param_parts.append(f"{param_name}: Optional[str] = None")
-                
+                        # Use str with empty string default for optional parameters
+                        # instead of Optional[str] to avoid MCP inspector issues
+                        param_parts.append(f"{param_name}: str = ''")
+
                 # Add working_dir parameter if needed
                 if uses_working_dir and 'working_dir' not in parameters:
-                    param_parts.append("working_dir: Optional[str] = None")
-                
+                    # Using str with empty string default, not Optional[str]
+                    param_parts.append("working_dir: str = ''")
+
                 param_string = ", ".join(param_parts)
                 
                 # Print debug info
@@ -152,8 +175,7 @@ if 'toolsets' in config:
                 tool_namespace = {
                     "tool_info": tool_info,
                     "build_command": build_command,
-                    "execute_command": execute_command,
-                    "Optional": Optional
+                    "execute_command": execute_command
                 }
                 
                 # Create the function definition code
@@ -168,8 +190,9 @@ async def {function_name}({param_string}) -> str:
                 
                 # Add code to collect parameters
                 for param_name in parameters.keys():
-                    exec_code += f"    if {param_name} is not None:\n"
-                    exec_code += f"        params['{param_name}'] = {param_name}\n"
+                    # Include parameters even if they're empty strings
+                    # This handles the case of str = '' default values
+                    exec_code += f"    params['{param_name}'] = {param_name}\n"
                 
                 # Add code to build and execute the command
                 exec_code += f"""
@@ -182,8 +205,14 @@ async def {function_name}({param_string}) -> str:
     # Execute the command
 """
                 
+                # Check if the working_dir is a parameter specified in the tool config
                 if uses_working_dir:
-                    exec_code += "    return await execute_command(cmd, working_dir)\n"
+                    if 'working_dir' in parameters:
+                        # If working_dir is in parameters, use that value from params
+                        exec_code += "    return await execute_command(cmd, params.get('working_dir', ''))\n"
+                    else:
+                        # Otherwise use the working_dir from function parameter
+                        exec_code += "    return await execute_command(cmd, working_dir)\n"
                 else:
                     exec_code += "    return await execute_command(cmd)\n"
                 

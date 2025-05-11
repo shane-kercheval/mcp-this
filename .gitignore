@@ -185,3 +185,6 @@ lid.176.ftz
 !language_codes.csv
 
 .vscode
+CLAUDE.md
+
+**/.claude/settings.local.json
