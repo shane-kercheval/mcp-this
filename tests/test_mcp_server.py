@@ -89,10 +89,9 @@ async def test_call_tool(server_params):
             
             # Call a tool
             result = await session.call_tool("example-tool", {"name": "World"})
-            
+            assert result.content
             # Get the text content from the result (CallToolResult object)
-            result_text = result.content[0].text if result.content else ""
-            
+            result_text = result.content[0].text
             # Verify the result
             assert "Hello, World!" in result_text
 
