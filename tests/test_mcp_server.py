@@ -15,7 +15,7 @@ def server_params():
     assert SAMPLE_CONFIG_PATH.exists(), f"Test config not found at {SAMPLE_CONFIG_PATH}"
     # Create environment variables for the server
     env = os.environ.copy()
-    env["MCP_CONFIG_PATH"] = str(SAMPLE_CONFIG_PATH)
+    env["MCP_THIS_CONFIG_PATH"] = str(SAMPLE_CONFIG_PATH)
     # Return the server parameters
     return StdioServerParameters(
         command="python",

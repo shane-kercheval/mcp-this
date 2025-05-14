@@ -1,34 +1,98 @@
 #!/usr/bin/env python3
-"""Entry point for mcp-this."""
+"""
+Entry point for mcp-this - MCP Server for CLI tools.
+
+This module provides the main entry point for the mcp-this package, which creates
+an MCP server that exposes command-line tools to Claude via the Model-Control-Protocol.
+The server reads YAML configuration files to define tools that map to shell commands,
+making them available to Claude without requiring any code.
+"""
 
 import os
 import sys
 import argparse
 import pathlib
-from mcp_this.mcp_server import mcp
+from mcp_this.mcp_server import mcp, init_server
+
+def find_default_config() -> str | None:
+    """
+    Find the default configuration file in standard locations.
+
+    Returns:
+        Optional[str]: Path to the default configuration file, or None if not found
+    """
+    # Check package configs directory first
+    package_dir = pathlib.Path(__file__).parent
+    locations = [
+        package_dir / "configs" / "default.yaml",
+        package_dir / "config" / "default.yaml",
+        pathlib.Path.home() / ".config" / "mcp-this" / "config.yaml",
+        pathlib.Path("/etc/mcp-this/config.yaml"),
+    ]
+
+    for location in locations:
+        if location.exists():
+            return str(location)
+
+    return None
 
 def main() -> None:
-    """Run the MCP server."""
+    """Run the MCP server with the specified configuration."""
     parser = argparse.ArgumentParser(description="Dynamic CLI Tools MCP Server")
-    parser.add_argument("--config", type=str, help="Path to YAML configuration file")
+    parser.add_argument(
+        "--config",
+        "--config-path",
+        type=str,
+        help="Path to YAML configuration file",
+    )
+    parser.add_argument(
+        "--transport",
+        type=str,
+        choices=["stdio", "sse", "streamable-http"],
+        default="stdio",
+        help="Transport protocol to use (default: stdio)",
+    )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Enable verbose logging",
+    )
     args = parser.parse_args()
 
     # Set config path from argument or look for default config
-    if args.config:
-        os.environ["MCP_CONFIG_PATH"] = args.config
-    elif not os.environ.get("MCP_CONFIG_PATH"):
-        # Look for default config in package directory
-        package_dir = pathlib.Path(__file__).parent
-        default_config = package_dir / "config" / "default.yaml"
-        if default_config.exists():
-            os.environ["MCP_CONFIG_PATH"] = str(default_config)
-        else:
-            print("Error: No configuration file specified. Use --config or set MCP_CONFIG_PATH.")
-            sys.exit(1)
+    config_path = None
 
-    # Run the MCP server
-    print(f"Starting MCP server with config: {os.environ.get('MCP_CONFIG_PATH')}")
-    mcp.run(transport="stdio")
+    # First check explicit argument
+    if args.config:
+        config_path = args.config
+    # Then check environment variable
+    elif os.environ.get("MCP_THIS_CONFIG_PATH"):
+        config_path = os.environ.get("MCP_THIS_CONFIG_PATH")
+    # Finally look for default configs
+    else:
+        config_path = find_default_config()
+
+    if not config_path:
+        print("Error: No configuration file found. Please provide one using:")
+        print("  1. --config argument")
+        print("  2. MCP_THIS_CONFIG_PATH environment variable")
+        print("  3. Place default.yaml in the package configs directory")
+        sys.exit(1)
+
+    if args.verbose:
+        print(f"Starting MCP server with config: {config_path}")
+        print(f"Using transport: {args.transport}")
+
+    try:
+        # Initialize the server with the configuration
+        init_server(config_path)
+
+        # Run the MCP server with the specified transport
+        mcp.run(transport=args.transport)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

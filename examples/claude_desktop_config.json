@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "mcp-this": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "uvx",
+        "mcp-this",
+        "--config",
+        "/path/to/your/config.yaml"
+      ],
+      "env": {
+        "SOME_API_KEY": "your-secret-key"
+      }
+    }
+  }
+}

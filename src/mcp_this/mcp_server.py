@@ -99,17 +99,17 @@ def load_config(config_path: str | None = None) -> dict:
 
     Args:
         config_path: Path to the YAML configuration file.
-                    If None, use MCP_CONFIG_PATH environment variable or default config.
+                    If None, use MCP_THIS_CONFIG_PATH environment variable or default config.
 
     Returns:
         The loaded configuration dictionary.
 
     Raises:
-        ValueError: If no configuration path is provided and MCP_CONFIG_PATH is not set.
+        ValueError: If no configuration path is provided and MCP_THIS_CONFIG_PATH is not set.
         FileNotFoundError: If the configuration file does not exist.
     """
     if not config_path:
-        config_path = os.environ.get("MCP_CONFIG_PATH")
+        config_path = os.environ.get("MCP_THIS_CONFIG_PATH")
 
     if not config_path:
         # Try to use default config
@@ -118,7 +118,7 @@ def load_config(config_path: str | None = None) -> dict:
             config_path = str(default_path)
         else:
             raise ValueError(
-                "No configuration path provided. Please set MCP_CONFIG_PATH environment variable, "
+                "No configuration path provided. Please set MCP_THIS_CONFIG_PATH environment variable, "  # noqa: E501
                 "pass a path, or include a default configuration in the package.",
             )
 
@@ -127,7 +127,6 @@ def load_config(config_path: str | None = None) -> dict:
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
     print(f"Loading configuration from: {config_path}")
-
     # Load configuration
     try:
         with open(config_path_obj) as f:
@@ -311,7 +310,7 @@ def init_server(config_path: str | None = None) -> None:
 
     Args:
         config_path: Path to the YAML configuration file.
-                    If None, use MCP_CONFIG_PATH environment variable or default config.
+                    If None, use MCP_THIS_CONFIG_PATH environment variable or default config.
 
     Raises:
         ValueError: If the configuration is invalid.
@@ -320,15 +319,11 @@ def init_server(config_path: str | None = None) -> None:
     config = load_config(config_path)
     validate_config(config)
     register_tools(config)
-    print("Server initialized successfully")
 
 
 def run_server() -> None:
     """Run the MCP server."""
     print("Starting MCP server...")
-    sys.stderr.write("STARTING TEST run_server\n")
-    sys.stderr.flush()
-
     mcp.run(transport="stdio")
 
 
@@ -336,7 +331,7 @@ if __name__ == "__main__":
 
     try:
         # Use environment variable for config path by default
-        config_path = os.environ.get("MCP_CONFIG_PATH")
+        config_path = os.environ.get("MCP_THIS_CONFIG_PATH")
         init_server(config_path)
         run_server()
     except Exception as e:

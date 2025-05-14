@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "mcp-this": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "uvx",
+        "mcp-this"
+      ]
+    }
+  }
+}

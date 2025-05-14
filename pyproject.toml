@@ -1,9 +1,21 @@
 [project]
 name = "mcp-this"
 version = "0.0.1"
-description = "TODO."
+description = "MCP Server that exposes CLI commands as tools for Claude using YAML configuration files"
 readme = "README.md"
 requires-python = ">=3.11"
+authors = [
+    {name = "Shane Kercheval", email = "shane.kercheval@gmail.com"},
+]
+keywords = ["MCP", "Claude", "AI", "CLI", "tools"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+]
 dependencies = [
     "click>=8.1.8",
     "python-dotenv>=1.0.1",

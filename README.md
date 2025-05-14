@@ -1,205 +1,203 @@
-# project-template
+# MCP-This
 
+> MCP Server that exposes CLI commands as tools for Claude using YAML configuration files
 
+`mcp-this` is an MCP server that makes command-line tools available to Claude via the Model-Control-Protocol. The server reads YAML configuration files to define which commands should be exposed as MCP tools, along with their parameters and execution details. This allows Claude to execute CLI commands without requiring you to write any code.
 
+## 📋 Features
 
-Claude Desktop Configuration
-Once your package is built and installed, you can configure Claude Desktop to use it:
-json{
+- 🔧 **Dynamic Tool Creation**: Define CLI tools in YAML without writing code
+- 🔄 **Command Execution**: Execute shell commands with parameter substitution
+- 📁 **Working Directory Support**: Run commands in specific directories
+- 🧩 **Toolset Organization**: Group related tools into logical toolsets
+- 🤖 **Claude Integration**: Seamless integration with Claude Desktop
+
+## 🚀 Installation
+
+### Using pip
+
+```bash
+pip install mcp-this
+```
+
+### Using uv (recommended)
+
+```bash
+uv pip install mcp-this
+```
+
+## 🏁 Quick Start
+
+1. Create a YAML configuration file:
+
+```yaml
+toolsets:
+  curl:
+    description: "Transfer data from or to a server"
+    tools:
+      curl:
+        description: "Make HTTP requests"
+        execution:
+          command: "curl <<arguments>>"
+        parameters:
+          arguments:
+            description: "Complete curl arguments including options and URL"
+            required: true
+```
+
+2. Run the MCP server:
+
+```bash
+# Using config file path
+mcp-this --config /path/to/your/config.yaml
+
+# Using environment variable
+export MCP_THIS_CONFIG_PATH=/path/to/your/config.yaml
+mcp-this
+```
+
+## 🛠️ Configuration Structure
+
+The configuration YAML files follow this structure:
+
+```yaml
+toolsets:
+  toolset_name:
+    description: "Toolset description"
+    tools:
+      tool_name:
+        description: "Tool description"
+        help_text: "Detailed help text for the tool"
+        execution:
+          command: "command template with <<parameter>> placeholders"
+          uses_working_dir: true/false
+        parameters:
+          parameter_name:
+            description: "Parameter description"
+            required: true/false
+```
+
+### Parameter Substitution
+
+Parameters in command templates use the `<<parameter>>` syntax:
+
+```yaml
+command: "find . -name \"<<pattern>>\" -type f | xargs wc -l"
+```
+
+When the tool is invoked, these placeholders are replaced with the actual parameter values.
+
+## 🔌 Claude Desktop Integration
+
+### Using npx and uvx (Recommended)
+
+The simplest way to configure Claude Desktop is to use `npx` and `uvx` to install and run `mcp-this` on demand:
+
+```json
+{
   "mcpServers": {
-    "cli-tools": {
+    "mcp-this": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "uvx",
+        "mcp-this",
+        "--config",
+        "/path/to/your/config.yaml"
+      ],
+      "env": {
+        "SOME_API_KEY": "your-secret-key"
+      }
+    }
+  }
+}
+```
+
+This approach:
+- Automatically installs the latest version from PyPI when needed
+- Doesn't require manual installation or updates
+- Cleanly isolates dependencies
+
+### Using the default configuration
+
+If you want to use the default configuration that comes with the package:
+
+```json
+{
+  "mcpServers": {
+    "mcp-this": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "uvx",
+        "mcp-this"
+      ]
+    }
+  }
+}
+```
+
+### Using a locally installed package
+
+If you've installed `mcp-this` globally or in your environment:
+
+```json
+{
+  "mcpServers": {
+    "mcp-this": {
       "command": "mcp-this",
       "args": ["--config", "/path/to/your/config.yaml"],
       "env": {
-        "ANY_ENV_VAR": "value"
+        "SOME_API_KEY": "your-secret-key"
       }
     }
   }
 }
-Or, if you want to use the default configuration that comes with the package:
-json{
-  "mcpServers": {
-    "cli-tools": {
-      "command": "mcp-this"
-    }
-  }
-}
+```
 
+## 🧪 Development
 
+### Setup Development Environment
 
+```bash
+# Clone the repository
+git clone https://github.com/your-username/mcp-this.git
+cd mcp-this
 
+# Install dependencies
+uv sync
+```
 
+### Development Commands
 
+```bash
+# Run linting
+make linting
 
+# Run tests
+make tests
 
+# Run the MCP server in development mode
+make mcp_dev
 
+# Build package
+make package-build
 
+# Publish package to PyPI
+make package-publish
+```
 
+### Testing with MCP Inspector
 
+```bash
+# Test with MCP Inspector
+MCP_THIS_CONFIG_PATH=./path/to/config.yaml uv run mcp dev ./src/mcp_this/mcp_server.py
+```
 
+## 📚 Examples
 
+Check out the [examples](./examples) directory for sample configuration files and usage patterns.
 
+## 📜 License
 
-
-To use this server, you would:
-
-Make sure your commands.yaml file is in the same directory
-Run python dynamic_cli_server.py to start the server
-Or use mcp dev dynamic_cli_server.py to test with the MCP Inspector
-Or use mcp install dynamic_cli_server.py to install in Claude Desktop
-
-
-
-full path needed?????
-{
-  "mcpServers": {
-    "dynamic-cli-tools": {
-      "command": "python",
-      "args": [
-        "path/to/dynamic_cli_server.py"
-      ],
-      "env": {
-        "MCP_CONFIG_PATH": "path/to/commands.yaml"
-      }
-    }
-  }
-}
-
-
-
-
-#!/usr/bin/env python3
-"""
-Installation helper for Dynamic CLI Tools MCP Server
-
-This script generates the configuration file for Claude Desktop
-and provides instructions on how to install the server.
-"""
-
-import os
-import json
-import argparse
-import shutil
-from pathlib import Path
-
-def parse_args():
-    """Parse command line arguments"""
-    parser = argparse.ArgumentParser(description="Installation helper for Dynamic CLI Tool MCP Server")
-    parser.add_argument("--config", "-c", default="commands.yaml",
-                        help="Path to the YAML configuration file (default: commands.yaml)")
-    parser.add_argument("--name", "-n", default="dynamic-cli-tools",
-                        help="Name for the MCP server in Claude Desktop (default: dynamic-cli-tools)")
-    return parser.parse_args()
-
-def generate_claude_config(server_name, config_path):
-    """Generate Claude Desktop configuration file"""
-    # Get the absolute paths
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    server_path = os.path.join(script_dir, "dynamic_cli_server.py")
-    config_path = os.path.join(script_dir, config_path)
-    
-    # Create the configuration
-    config = {
-        "mcpServers": {
-            server_name: {
-                "command": "python",
-                "args": [
-                    server_path,
-                    "--config",
-                    config_path
-                ]
-            }
-        }
-    }
-    
-    # Determine Claude Desktop config path
-    if os.name == 'posix':  # macOS/Linux
-        config_dir = os.path.expanduser("~/Library/Application Support/Claude")
-    else:  # Windows
-        config_dir = os.path.join(os.getenv("APPDATA"), "Claude")
-    
-    # Create the directory if it doesn't exist
-    os.makedirs(config_dir, exist_ok=True)
-    
-    # Path to the Claude Desktop config file
-    claude_config_path = os.path.join(config_dir, "claude_desktop_config.json")
-    
-    # Update existing config if it exists
-    if os.path.exists(claude_config_path):
-        try:
-            with open(claude_config_path, 'r') as f:
-                existing_config = json.load(f)
-            
-            # Update the servers section
-            if "mcpServers" not in existing_config:
-                existing_config["mcpServers"] = {}
-            
-            existing_config["mcpServers"][server_name] = config["mcpServers"][server_name]
-            config = existing_config
-            
-            print(f"Updating existing Claude Desktop configuration at: {claude_config_path}")
-        except Exception as e:
-            print(f"Error reading existing config, will create a new one: {e}")
-    else:
-        print(f"Creating new Claude Desktop configuration at: {claude_config_path}")
-    
-    # Write the configuration
-    with open(claude_config_path, 'w') as f:
-        json.dump(config, f, indent=2)
-    
-    return claude_config_path
-
-def main():
-    """Main function"""
-    args = parse_args()
-    
-    print("Installing Dynamic CLI Tool MCP Server for Claude Desktop...")
-    
-    # Generate Claude Desktop configuration
-    config_path = generate_claude_config(args.name, args.config)
-    
-    print("\nInstallation complete!")
-    print("\nConfiguration has been written to:")
-    print(f"  {config_path}")
-    print("\nTo use the server in Claude Desktop:")
-    print("1. Restart Claude Desktop if it's currently running")
-    print(f"2. Look for the '{args.name}' server in Claude Desktop")
-    print("\nYou can also test the server using the MCP Inspector:")
-    print(f"  mcp dev dynamic_cli_server.py --config {args.config}")
-    
-if __name__ == "__main__":
-    main()
-
-
-
-
-
-
-With these files:
-
-dynamic_cli_server.py - The main server that accepts a config parameter
-commands.yaml - Your YAML configuration with all the CLI tools
-claude_desktop_config.json - Configuration for Claude Desktop (automatically created by the install script)
-install.py - Helper script to install the server for Claude Desktop
-
-You can then install the server by running:
-bashpython install.py
-This will:
-
-Create/update the Claude Desktop configuration
-Set up the server to use your commands.yaml file
-Provide instructions for using the server with Claude Desktop
-
-This approach makes it easy to distribute your server to others who can simply run the install script to set it up with their Claude Desktop installation.
-
-
-
-
-- `make tests`
-- `make app`
-
-
-## Misc
-
-- Add a new dependency: `uv add <package>`
-- Add a new `dev` dependency: `uv add <package> --group dev`
+This project is licensed under the terms of the LICENSE file included in the repository.
