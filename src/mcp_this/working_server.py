@@ -11,32 +11,11 @@ import yaml
 import asyncio
 import subprocess
 import re
-from typing import Dict, Any, Optional, List
+import sys
+from typing import Dict, Any, Optional
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
-
-import logging
-import sys
-
-# Configure logging to write to stderr with a specific format
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='[%(asctime)s] %(levelname)s: %(message)s',
-    stream=sys.stderr
-)
-
-# Create a logger for your module
-logger = logging.getLogger("mcp_server")
-
-# Write directly to stderr before imports
-sys.stderr.write("STARTING TEST SCRIPT\n")
-sys.stderr.flush()
-
-def force_stderr_message(message):
-    """Write a message directly to stderr, bypassing any buffering."""
-    sys.stderr.write(f"CRITICAL: {message}\n")
-    sys.stderr.flush()
 
 # Create the MCP server
 mcp = FastMCP("Dynamic CLI Tools")
@@ -73,7 +52,6 @@ async def execute_command(cmd: str, working_dir: str = '') -> str:
 
         # Check if the working directory exists and is accessible
         if working_dir:
-            import os
             if not os.path.exists(working_dir):
                 return f"Error: Working directory does not exist: {working_dir}"
             if not os.path.isdir(working_dir):
@@ -112,7 +90,7 @@ def get_default_config_path() -> Optional[Path]:
     """Get the path to the default configuration file."""
     # Look for default config in package directory
     package_dir = Path(__file__).parent
-    default_config = package_dir / "config" / "default.yaml"
+    default_config = package_dir / "configs" / "default.yaml"
     if default_config.exists():
         return default_config
     return None
@@ -132,8 +110,7 @@ def load_config(config_path: Optional[str] = None) -> dict:
         ValueError: If no configuration path is provided and MCP_CONFIG_PATH is not set.
         FileNotFoundError: If the configuration file does not exist.
     """
-    force_stderr_message("Loading configuration...")
-
+    # Get configuration path
     if not config_path:
         config_path = os.environ.get("MCP_CONFIG_PATH")
     
@@ -182,29 +159,6 @@ def validate_config(config: dict) -> None:
     
     if not isinstance(config['toolsets'], dict):
         raise ValueError("'toolsets' must be a dictionary")
-    
-    for toolset_name, toolset_config in config['toolsets'].items():
-        if not isinstance(toolset_config, dict):
-            raise ValueError(f"Toolset '{toolset_name}' must be a dictionary")
-        
-        if 'tools' not in toolset_config:
-            raise ValueError(f"Toolset '{toolset_name}' must contain a 'tools' section")
-        
-        if not isinstance(toolset_config['tools'], dict):
-            raise ValueError(f"Tools in toolset '{toolset_name}' must be a dictionary")
-        
-        for tool_name, tool_config in toolset_config['tools'].items():
-            if not isinstance(tool_config, dict):
-                raise ValueError(f"Tool '{toolset_name}.{tool_name}' must be a dictionary")
-            
-            if 'execution' not in tool_config:
-                raise ValueError(f"Tool '{toolset_name}.{tool_name}' must contain an 'execution' section")
-            
-            if not isinstance(tool_config['execution'], dict):
-                raise ValueError(f"Execution section in '{toolset_name}.{tool_name}' must be a dictionary")
-            
-            if 'command' not in tool_config['execution']:
-                raise ValueError(f"Tool '{toolset_name}.{tool_name}' execution must contain a 'command'")
 
 def register_tools(config: dict) -> None:
     """
@@ -341,36 +295,55 @@ async def {function_name}({param_string}) -> str:
                 import traceback
                 traceback.print_exc()
 
+# Initialize at module level (THIS IS THE KEY PART)
+try:
+    sys.stderr.write("MODULE IMPORT - Registering tools\n")
+    sys.stderr.flush()
+    
+    # Get config path from environment
+    config_path = os.environ.get("MCP_CONFIG_PATH")
+    if config_path:
+        config = load_config(config_path)
+        validate_config(config)
+        register_tools(config)
+        sys.stderr.write(f"Successfully registered tools with config: {config_path}\n")
+        sys.stderr.flush()
+    else:
+        sys.stderr.write("No MCP_CONFIG_PATH environment variable set during import\n")
+        sys.stderr.flush()
+except Exception as e:
+    sys.stderr.write(f"Error during module import tool registration: {str(e)}\n")
+    sys.stderr.flush()
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+    sys.stderr.flush()
+
 def init_server(config_path: Optional[str] = None) -> None:
     """
     Initialize the server with the given configuration.
+    This is mainly for direct execution, as tools are already registered at module level.
     
     Args:
         config_path: Path to the YAML configuration file.
                     If None, use MCP_CONFIG_PATH environment variable or default config.
-    
-    Raises:
-        ValueError: If the configuration is invalid.
-        FileNotFoundError: If the configuration file does not exist.
     """
-    config = load_config(config_path)
-    validate_config(config)
-    register_tools(config)
-    print("Server initialized successfully")
+    try:
+        config = load_config(config_path)
+        validate_config(config)
+        # We don't register tools here again if they're already registered
+        print("Server initialized successfully")
+    except Exception as e:
+        print(f"Error initializing server: {e}")
+        import traceback
+        traceback.print_exc()
 
 def run_server() -> None:
     """Run the MCP server."""
     print("Starting MCP server...")
-    sys.stderr.write("STARTING TEST run_server\n")
-    sys.stderr.flush()
-
     mcp.run(transport="stdio")
-    
 
 if __name__ == "__main__":
-    sys.stderr.write("STARTING TEST SCRIPT - MAIN\n")
-    sys.stderr.flush()
-
+    # This code only runs when the module is executed directly
     try:
         # Use environment variable for config path by default
         config_path = os.environ.get("MCP_CONFIG_PATH")
@@ -379,5 +352,3 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error: {e}")
         exit(1)
-    
-

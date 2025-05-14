@@ -1,5 +1,4 @@
 version = 1
-revision = 1
 requires-python = ">=3.11"
 
 [[package]]
@@ -561,7 +560,7 @@ version = "0.0.1"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
-    { name = "mcp", extra = ["cli"] },
+    { name = "mcp" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
 ]
@@ -570,6 +569,7 @@ dependencies = [
 dev = [
     { name = "coverage" },
     { name = "ipykernel" },
+    { name = "mcp", extra = ["cli"] },
     { name = "pip" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -581,7 +581,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.1.8" },
-    { name = "mcp", extras = ["cli"], specifier = ">=1.8.0" },
+    { name = "mcp" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "pyyaml" },
 ]
@@ -590,6 +590,7 @@ requires-dist = [
 dev = [
     { name = "coverage", specifier = ">=7.7.1" },
     { name = "ipykernel", specifier = ">=6.29.5" },
+    { name = "mcp", extras = ["cli"] },
     { name = "pip", specifier = ">=25.0.1" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "pytest-asyncio", specifier = ">=0.25.3" },

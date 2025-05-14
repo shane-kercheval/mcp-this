@@ -1,0 +1,124 @@
+# tests/test_mcp_server.py
+
+import pytest
+import asyncio
+import os
+from pathlib import Path
+import yaml
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+# Path to your sample config for testing
+SAMPLE_CONFIG_PATH = Path(__file__).parent / "fixtures" / "test_config.yaml"
+
+def setup_module():
+    """Setup function that runs before any tests."""
+    print(f"Setting up test config at {SAMPLE_CONFIG_PATH}")
+    
+    # Create test config directory
+    SAMPLE_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Create a simple test configuration
+    test_config = {
+        "toolsets": {
+            "example": {
+                "tools": {
+                    "tool": {
+                        "description": "A test tool",
+                        "execution": {
+                            "command": "echo Hello, <<name>>!"
+                        },
+                        "parameters": {
+                            "name": {
+                                "description": "Your name",
+                                "required": False
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    # Write the config
+    with open(SAMPLE_CONFIG_PATH, "w") as f:
+        yaml.dump(test_config, f)
+
+@pytest.fixture
+def server_params():
+    """Create server parameters for connecting to our MCP server."""
+    # Make sure the config path exists
+    assert SAMPLE_CONFIG_PATH.exists(), f"Test config not found at {SAMPLE_CONFIG_PATH}"
+    
+    # Create environment variables for the server
+    env = os.environ.copy()
+    env["MCP_CONFIG_PATH"] = str(SAMPLE_CONFIG_PATH)
+    
+    # Return the server parameters
+    return StdioServerParameters(
+        command="python",
+        args=["-m", "mcp_this.mcp_server"],  # Use your module path
+        env=env
+    )
+
+@pytest.mark.asyncio
+async def test_list_tools(server_params):
+    """Test that tools are properly registered and can be listed."""
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            # Initialize the connection
+            await session.initialize()
+            
+            # List available tools
+            tools = await session.list_tools()
+            
+            # Verify tools exist
+            assert tools.tools  # Check that the tools list is not empty
+            
+            # Check for specific tools (adjust based on your test config)
+            tool_names = [t.name for t in tools.tools]
+            assert "example-tool" in tool_names
+
+@pytest.mark.asyncio
+async def test_call_tool(server_params):
+    """Test that a tool can be called and returns expected results."""
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            # Initialize the connection
+            await session.initialize()
+            
+            # Call a tool
+            result = await session.call_tool("example-tool", {"name": "World"})
+            
+            # Get the text content from the result (CallToolResult object)
+            result_text = result.content[0].text if result.content else ""
+            
+            # Verify the result
+            assert "Hello, World!" in result_text
+
+@pytest.mark.asyncio
+async def test_tool_parameters(server_params):
+    """Test that tool parameters are correctly defined."""
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            # Initialize the connection
+            await session.initialize()
+            
+            # List available tools
+            tools = await session.list_tools()
+            
+            # Find our test tool
+            example_tool = next((t for t in tools.tools if t.name == "example-tool"), None)
+            assert example_tool is not None
+            
+            # Parameters are in the inputSchema property
+            assert example_tool.inputSchema is not None
+            assert 'properties' in example_tool.inputSchema
+            
+            # Check that the 'name' parameter exists
+            assert 'name' in example_tool.inputSchema['properties']
+            
+            # Parameter is optional (no 'required' list or it's not in that list)
+            # In JSON Schema, required fields are listed in a 'required' array at the schema root
+            if 'required' in example_tool.inputSchema:
+                assert 'name' not in example_tool.inputSchema['required']

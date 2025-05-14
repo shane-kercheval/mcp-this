@@ -14,8 +14,11 @@ build:
 
 	# uv run mcp dev ./src/mcp_this/mcp_server.py --config ./example_configs/basic.yaml
 	# uv run mcp dev -- ./src/mcp_this/mcp_server.py --config ./example_configs/basic.yaml
+# mcp_dev:
+# 	MCP_CONFIG_PATH=./example_configs/basic.yaml uv run mcp dev ./src/mcp_this/mcp_server.py
+
 mcp_dev:
-	MCP_CONFIG_PATH=./example_configs/basic.yaml uv run mcp dev ./src/mcp_this/mcp_server.py
+	MCP_CONFIG_PATH=./src/mcp_this/configs/default.yaml uv run mcp dev ./src/mcp_this/mcp_server.py
 
 mcp_test:
 	uv run mcp dev ./src/mcp_this/test_server.py
@@ -32,10 +35,11 @@ linting:
 	uv run ruff check tests
 
 unittests:
-	uv run rm -f tests/test_files/log.log
-	# pytest tests
-	uv run coverage run -m pytest --durations=0 tests
-	uv run coverage html
+	uv run pytest tests 
+	# uv run rm -f tests/test_files/log.log
+	# # pytest tests
+	# uv run coverage run -m pytest --durations=0 tests
+	# uv run coverage html
 
 tests: linting unittests
 

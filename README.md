@@ -3,6 +3,44 @@
 
 
 
+Claude Desktop Configuration
+Once your package is built and installed, you can configure Claude Desktop to use it:
+json{
+  "mcpServers": {
+    "cli-tools": {
+      "command": "mcp-this",
+      "args": ["--config", "/path/to/your/config.yaml"],
+      "env": {
+        "ANY_ENV_VAR": "value"
+      }
+    }
+  }
+}
+Or, if you want to use the default configuration that comes with the package:
+json{
+  "mcpServers": {
+    "cli-tools": {
+      "command": "mcp-this"
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 To use this server, you would:
 
 Make sure your commands.yaml file is in the same directory
