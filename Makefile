@@ -31,15 +31,11 @@ mcp_minimal:
 
 
 linting:
-	uv run ruff check src
-	uv run ruff check tests
+	uv run ruff check src --fix --unsafe-fixes
+	uv run ruff check tests --fix --unsafe-fixes
 
 unittests:
-	uv run pytest tests 
-	# uv run rm -f tests/test_files/log.log
-	# # pytest tests
-	# uv run coverage run -m pytest --durations=0 tests
-	# uv run coverage html
+	uv run pytest tests -v --durations=10
 
 tests: linting unittests
 
