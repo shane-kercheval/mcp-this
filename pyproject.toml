@@ -1,12 +1,14 @@
 [project]
-name = "python-template"
+name = "mcp-this"
 version = "0.0.1"
-description = "Project Description."
+description = "TODO."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "click>=8.1.8",
+    "mcp[cli]>=1.8.0",
     "python-dotenv>=1.0.1",
+    "pyyaml",
 ]
 
 [dependency-groups]
@@ -18,13 +20,14 @@ dev = [
     "ruff>=0.11.0",
     "pip>=25.0.1",
     "ipykernel>=6.29.5",
+    "sik-llms",
 ]
 
 [tool.hatch.metadata]
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/package"]
+packages = ["src/mcp_this"]
 
 [build-system]
 requires = ["hatchling>=1.17.1"]
