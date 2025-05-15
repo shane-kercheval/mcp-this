@@ -7,7 +7,7 @@
         "python",
         "-m",
         "mcp_this",
-        "--config_path",
+        "--tools_path",
         "./examples/toolset_example__curl.yaml"
       ],
       "env": {}

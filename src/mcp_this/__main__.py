@@ -39,14 +39,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Dynamic CLI Tools MCP Server")
     config_group = parser.add_mutually_exclusive_group()
     config_group.add_argument(
-        "--config_path",
-        "--config-path",
+        "--tools_path",
+        "--tools-path",
         type=str,
         help="Path to YAML configuration file",
     )
     config_group.add_argument(
-        "--config_value",
-        "--config-value",
+        "--tools",
+        "--tools",
         type=str,
         help="JSON-structured configuration string",
     )
@@ -66,39 +66,39 @@ def main() -> None:
     args = parser.parse_args()
 
     # Set config path or value from argument or look for default config
-    config_path = None
-    config_value = None
+    tools_path = None
+    tools = None
 
     # First check explicit arguments
-    if args.config_path:
-        config_path = args.config_path
-    elif args.config_value:
-        config_value = args.config_value
+    if args.tools_path:
+        tools_path = args.tools_path
+    elif args.tools:
+        tools = args.tools
     # Then check environment variable
     elif os.environ.get("MCP_THIS_CONFIG_PATH"):
-        config_path = os.environ.get("MCP_THIS_CONFIG_PATH")
+        tools_path = os.environ.get("MCP_THIS_CONFIG_PATH")
     # Finally look for default configs
     else:
-        config_path = find_default_config()
+        tools_path = find_default_config()
 
-    if not config_path and not config_value:
+    if not tools_path and not tools:
         print("Error: No configuration found. Please provide one using:")
-        print("  1. --config_path argument")
-        print("  2. --config_value argument")
+        print("  1. --tools_path argument")
+        print("  2. --tools argument")
         print("  3. MCP_THIS_CONFIG_PATH environment variable")
         print("  4. Place default.yaml in the package configs directory")
         sys.exit(1)
 
     if args.verbose:
-        if config_path:
-            print(f"Starting MCP server with config path: {config_path}")
-        elif config_value:
+        if tools_path:
+            print(f"Starting MCP server with config path: {tools_path}")
+        elif tools:
             print("Starting MCP server with config value from JSON string")
         print(f"Using transport: {args.transport}")
 
     try:
         # Initialize the server with the configuration
-        init_server(config_path=config_path, config_value=config_value)
+        init_server(tools_path=tools_path, tools=tools)
         # Run the MCP server with the specified transport
         mcp.run(transport=args.transport)
     except Exception as e:

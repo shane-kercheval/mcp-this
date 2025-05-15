@@ -66,8 +66,11 @@ toolsets:
 2. Run the MCP server:
 
 ```bash
-# Using config file path
-mcp-this --config /path/to/your/config.yaml
+# Using tools path
+mcp-this --tools-path /path/to/your/config.yaml
+
+# Using JSON string directly
+mcp-this --tools '{"tools": {"echo": {"description": "Echo command", "execution": {"command": "echo <<message>>"}, "parameters": {"message": {"description": "Message to echo", "required": true}}}}}'
 
 # Using environment variable
 export MCP_THIS_CONFIG_PATH=/path/to/your/config.yaml
@@ -169,7 +172,7 @@ The simplest way to configure Claude Desktop is to use `npx` and `uvx` to instal
         "-y",
         "uvx",
         "mcp-this",
-        "--config",
+        "--tools-path",
         "/path/to/your/config.yaml"
       ],
       "env": {
@@ -213,7 +216,7 @@ If you've installed `mcp-this` globally or in your environment:
   "mcpServers": {
     "mcp-this": {
       "command": "mcp-this",
-      "args": ["--config", "/path/to/your/config.yaml"],
+      "args": ["--tools-path", "/path/to/your/config.yaml"],
       "env": {
         "SOME_API_KEY": "your-secret-key"
       }
@@ -257,8 +260,14 @@ make package-publish
 ### Testing with MCP Inspector
 
 ```bash
-# Test with MCP Inspector
+# Test with MCP Inspector using environment variable
 MCP_THIS_CONFIG_PATH=./path/to/config.yaml uv run mcp dev ./src/mcp_this/mcp_server.py
+
+# Test with MCP Inspector using command-line flags
+uv run mcp dev -m mcp_this --tools-path ./path/to/config.yaml
+
+# Test with MCP Inspector using JSON string
+uv run mcp dev -m mcp_this --tools '{"tools": {"example": {"description": "Example tool", "execution": {"command": "echo Test"}}}}'
 ```
 
 ## 📚 Examples

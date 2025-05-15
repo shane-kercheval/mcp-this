@@ -234,7 +234,7 @@ async def execute_command(cmd: str, working_dir: str | None = None) -> str:  # n
         return f"Error: {e!s}"
 
 
-def get_default_config_path() -> Path | None:
+def get_default_tools_path() -> Path | None:
     """Get the path to the default configuration file."""
     # Look for default config in package directory
     package_dir = Path(__file__).parent
@@ -244,16 +244,16 @@ def get_default_config_path() -> Path | None:
     return None
 
 
-def load_config(config_path: str | None = None, config_value: str | None = None) -> dict:
+def load_config(tools_path: str | None = None, tools: str | None = None) -> dict:
     """
     Load configuration from a YAML file or JSON string.
 
     Args:
-        config_path: Path to the YAML configuration file.
-                    If None and config_value is None, use MCP_THIS_CONFIG_PATH environment variable
+        tools_path: Path to the YAML configuration file.
+                    If None and tools is None, use MCP_THIS_CONFIG_PATH environment variable
                     or default config.
-        config_value: JSON-structured configuration string.
-                    Takes precedence over config_path if both are provided.
+        tools: JSON-structured configuration string.
+                    Takes precedence over tools_path if both are provided.
 
     Returns:
         The loaded configuration dictionary.
@@ -263,38 +263,38 @@ def load_config(config_path: str | None = None, config_value: str | None = None)
         FileNotFoundError: If the configuration file does not exist.
         JSONDecodeError: If the JSON configuration string is invalid.
     """
-    # Priority: config_value > config_path > env var > default config
-    if config_value:
+    # Priority: tools > tools_path > env var > default config
+    if tools:
         try:
-            config = json.loads(config_value)
+            config = json.loads(tools)
             if not config:
                 raise ValueError("Configuration value is empty")
             return config
         except json.JSONDecodeError as e:
             raise ValueError(f"Error parsing JSON configuration: {e}")
 
-    if not config_path:
-        config_path = os.environ.get("MCP_THIS_CONFIG_PATH")
+    if not tools_path:
+        tools_path = os.environ.get("MCP_THIS_CONFIG_PATH")
 
-    if not config_path:
+    if not tools_path:
         # Try to use default config
-        default_path = get_default_config_path()
+        default_path = get_default_tools_path()
         if default_path:
-            config_path = str(default_path)
+            tools_path = str(default_path)
         else:
             raise ValueError(
-                "No configuration provided. Please provide --config_path, --config_value, "
+                "No configuration provided. Please provide --tools_path, --tools, "
                 "set MCP_THIS_CONFIG_PATH environment variable, "
                 "or include a default configuration in the package.",
             )
 
-    config_path_obj = Path(config_path)
-    if not config_path_obj.is_file():
-        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+    tools_path_obj = Path(tools_path)
+    if not tools_path_obj.is_file():
+        raise FileNotFoundError(f"Configuration file not found: {tools_path}")
 
     # Load configuration
     try:
-        with open(config_path_obj) as f:
+        with open(tools_path_obj) as f:
             config = yaml.safe_load(f)
             if not config:
                 raise ValueError("Configuration file is empty")
@@ -564,23 +564,23 @@ def register_tools(config: dict) -> None:
     register_parsed_tools(tools_info)
 
 
-def init_server(config_path: str | None = None, config_value: str | None = None) -> None:
+def init_server(tools_path: str | None = None, tools: str | None = None) -> None:
     """
     Initialize the server with the given configuration.
 
     Args:
-        config_path: Path to the YAML configuration file.
-                    If None and config_value is None, use MCP_THIS_CONFIG_PATH
+        tools_path: Path to the YAML configuration file.
+                    If None and tools is None, use MCP_THIS_CONFIG_PATH
                     environment variable or default config.
-        config_value: JSON-structured configuration string.
-                    Takes precedence over config_path if both are provided.
+        tools: JSON-structured configuration string.
+                    Takes precedence over tools_path if both are provided.
 
     Raises:
         ValueError: If the configuration is invalid.
         FileNotFoundError: If the configuration file does not exist.
         JSONDecodeError: If the JSON configuration string is invalid.
     """
-    config = load_config(config_path, config_value)
+    config = load_config(tools_path, tools)
     validate_config(config)
     register_tools(config)
 
@@ -595,9 +595,9 @@ if __name__ == "__main__":
     # For normal usage, the __main__.py entry point should be used
     try:
         # Use environment variable for config path by default
-        config_path = os.environ.get("MCP_THIS_CONFIG_PATH")
-        config_value = None  # No direct JSON input when running as script
-        init_server(config_path=config_path, config_value=config_value)
+        tools_path = os.environ.get("MCP_THIS_CONFIG_PATH")
+        tools = None  # No direct JSON input when running as script
+        init_server(tools_path=tools_path, tools=tools)
         run_server()
     except Exception as e:
         print(f"Error: {e}")
