@@ -687,8 +687,10 @@ class TestParseTools:
 
         tool = result[0]
         desc = tool.get_full_description()
+        assert "TOOL DESCRIPTION:" in desc
         assert "A simple test tool" in desc
-        assert "Command: echo Test" in desc
+        assert "COMMAND CALLED:" in desc
+        assert "`echo Test`" in desc
 
     def test_get_full_description_with_parameters(self):
         """Test get_full_description for a tool with parameters."""
@@ -721,11 +723,15 @@ class TestParseTools:
 
         tool = result[0]
         desc = tool.get_full_description()
+        assert "TOOL DESCRIPTION:" in desc
         assert "A greeting tool" in desc
-        assert "Command: echo Hello, <<name>>!" in desc
-        assert "Args:" in desc
-        assert "name: Your name (optional)" in desc
-        assert "greeting: Greeting to use (required)" in desc
+        assert "COMMAND CALLED:" in desc
+        assert "`echo Hello, <<name>>!`" in desc
+        assert "Text like <<parameter_name>> (e.g." in desc
+        assert "PARAMETERS:" in desc
+        assert "- name [OPTIONAL]: Your name" in desc
+        assert "- greeting [REQUIRED]: Greeting to use" in desc
+        assert "EXAMPLE USAGE:" not in desc
 
     def test_get_full_description_with_working_dir(self):
         """Test get_full_description for a tool with working directory."""
@@ -749,9 +755,12 @@ class TestParseTools:
 
         tool = result[0]
         desc = tool.get_full_description()
+        assert "TOOL DESCRIPTION:" in desc
         assert "List files in directory" in desc
-        assert "Command: ls" in desc
-        assert "working_dir: Directory to run the command in (optional)" in desc
+        assert "COMMAND CALLED:" in desc
+        assert "`ls`" in desc
+        assert "PARAMETERS:" in desc
+        assert "- working_dir [OPTIONAL] (string, directory path): Directory to run the command in" in desc  # noqa: E501
 
     def test_get_full_description_with_complex_command(self):
         """Test get_full_description with a complex command template."""
@@ -785,8 +794,155 @@ class TestParseTools:
 
         tool = result[0]
         desc = tool.get_full_description()
+        assert "TOOL DESCRIPTION:" in desc
         assert "Find files with pattern" in desc
-        assert 'Command: find . -name "<<pattern>>" -type f | xargs grep "<<content>>"' in desc
-        assert "Args:" in desc
-        assert "pattern: File pattern to search for (required)" in desc
-        assert "content: Content to find in files (required)" in desc
+        assert "COMMAND CALLED:" in desc
+        assert "`find . -name \"<<pattern>>\" -type f | xargs grep \"<<content>>\"`" in desc
+        assert "Text like <<parameter_name>> (e.g." in desc
+        assert "PARAMETERS:" in desc
+        assert "- pattern [REQUIRED] (string, glob pattern): File pattern to search for" in desc
+        assert "- content [REQUIRED]: Content to find in files" in desc
+        assert "EXAMPLE USAGE:" not in desc
+
+    def test_parameter_type_inference(self):
+        """Test that the get_full_description method correctly infers parameter types."""
+        config = {
+            "toolsets": {
+                "example": {
+                    "tools": {
+                        "process": {
+                            "description": "Process files with given settings",
+                            "execution": {
+                                "command": "process --input=<<file_path>> --pattern=<<search_pattern>> --name=<<user_name>>",  # noqa: E501
+                                "uses_working_dir": False,
+                            },
+                            "parameters": {
+                                "file_path": {
+                                    "description": "Path to the input file",
+                                    "required": True,
+                                },
+                                "search_pattern": {
+                                    "description": "Pattern to search for",
+                                    "required": True,
+                                },
+                                "user_name": {
+                                    "description": "User name for processing",
+                                    "required": False,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(config)
+        assert len(result) == 1
+
+        tool = result[0]
+        desc = tool.get_full_description()
+
+        # Check for parameter type inference
+        assert "(string, file path)" in desc
+        assert "(string, glob pattern)" in desc
+
+        # Check for placeholder example
+        assert "Text like <<parameter_name>> (e.g." in desc
+
+        # Verify the section headers
+        assert "TOOL DESCRIPTION:" in desc
+        assert "COMMAND CALLED:" in desc
+        assert "PARAMETERS:" in desc
+
+        # Verify that EXAMPLE USAGE is not present
+        assert "EXAMPLE USAGE:" not in desc
+
+    def test_get_full_description_important_notes(self):
+        """
+        Test that the get_full_description method adds safety notes for commands with side
+        effects.
+        """
+        # Test delete command
+        delete_config = {
+            "toolsets": {
+                "file": {
+                    "tools": {
+                        "remove": {
+                            "description": "Delete a file",
+                            "execution": {
+                                "command": "rm <<file_path>>",
+                            },
+                            "parameters": {
+                                "file_path": {
+                                    "description": "Path to file to delete",
+                                    "required": True,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(delete_config)
+        desc = result[0].get_full_description()
+        assert "IMPORTANT NOTES:" in desc
+        assert "This command can DELETE files or data. Use with caution." in desc
+
+        # Test move command
+        move_config = {
+            "toolsets": {
+                "file": {
+                    "tools": {
+                        "move": {
+                            "description": "Move a file",
+                            "execution": {
+                                "command": "mv <<source>> <<destination>>",
+                            },
+                            "parameters": {
+                                "source": {
+                                    "description": "Source path",
+                                    "required": True,
+                                },
+                                "destination": {
+                                    "description": "Destination path",
+                                    "required": True,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(move_config)
+        desc = result[0].get_full_description()
+        assert "IMPORTANT NOTES:" in desc
+        assert "This command can MOVE files or data. Verify paths are correct." in desc
+
+        # Test write command
+        write_config = {
+            "toolsets": {
+                "file": {
+                    "tools": {
+                        "create": {
+                            "description": "Create a new file",
+                            "execution": {
+                                "command": "echo <<content>> > <<file_path>>",
+                            },
+                            "parameters": {
+                                "content": {
+                                    "description": "Content to write",
+                                    "required": True,
+                                },
+                                "file_path": {
+                                    "description": "Path to output file",
+                                    "required": True,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(write_config)
+        desc = result[0].get_full_description()
+        assert "IMPORTANT NOTES:" in desc
+        assert "This command can CREATE or MODIFY files or data." in desc

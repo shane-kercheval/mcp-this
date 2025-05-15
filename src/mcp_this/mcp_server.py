@@ -32,41 +32,91 @@ class ToolInfo:
     exec_code: str
     runtime_info: dict[str, any]  # Information needed by the generated function at runtime
 
-    def get_full_description(self) -> str:
+    def get_full_description(self) -> str:  # noqa: PLR0912, PLR0915
         """
-        Build a comprehensive Python-style docstring for the tool.
+        Build a comprehensive description optimized for LLM function calling.
 
-        Includes the tool description followed by the command template,
-        then parameter descriptions in standard docstring format.
+        Format is designed to help LLMs understand the tool purpose,
+        command structure, and parameter requirements clearly.
 
         Returns:
-            A formatted docstring with the tool description, command template, and parameter
-            details.
+            A formatted description with key sections highlighted for LLM processing.
         """
-        # Start with the tool description
-        lines = [self.description.strip()]
+        lines = []
 
-        # Add a blank line and the command template
+        # Start with a clear TOOL DESCRIPTION section
+        lines.append("TOOL DESCRIPTION:")
         lines.append("")
-        lines.append("Command: " + self.command_template)
+        lines.append(self.description.strip())
 
-        # Add Args section if there are parameters
+        # Add the COMMAND section showing the template
+        lines.append("")
+        lines.append("COMMAND CALLED:")
+        lines.append("")
+        lines.append(f"`{self.command_template}`")
+
+        # Add clarification on what the placeholders mean, if there are parameters
+        if "<<" in self.command_template and self.parameters:
+            # Get the first parameter name to use as example
+            first_param = next(iter(self.parameters.keys()), "parameter")
+            lines.append("")
+            lines.append(f"Text like <<parameter_name>> (e.g. <<{first_param}>>) will be replaced with parameter values.")  # noqa: E501
+
+        # Add PARAMETERS section with clearly marked requirements
         if self.parameters:
             lines.append("")
-            lines.append("Args:")
+            lines.append("PARAMETERS:")
+            lines.append("")
 
-            # Add each parameter with its description
+            # Add each parameter with its description and inferred type
             for param_name, param_config in self.parameters.items():
                 desc = param_config.get("description", "")
                 required = param_config.get("required", False)
-                req_text = " (required)" if required else " (optional)"
-                lines.append(f"    {param_name}: {desc}{req_text}")
+                req_status = "[REQUIRED]" if required else "[OPTIONAL]"
+
+                # Try to infer parameter type from name
+                param_type = ""
+                if "file" in param_name.lower() or "path" in param_name.lower():
+                    param_type = "(string, file path)"
+                elif "pattern" in param_name.lower() or "glob" in param_name.lower():
+                    param_type = "(string, glob pattern)"
+                elif "number" in param_name.lower() or "count" in param_name.lower() or "limit" in param_name.lower():  # noqa: E501
+                    param_type = "(integer)"
+                elif "enabled" in param_name.lower() or "flag" in param_name.lower():
+                    param_type = "(boolean)"
+                elif "url" in param_name.lower():
+                    param_type = "(string, URL)"
+
+                lines.append(f"- {param_name} {req_status}{' ' + param_type if param_type else ''}: {desc}")  # noqa: E501
 
         # Add working_dir parameter if not explicitly included but used
         if self.uses_working_dir and "working_dir" not in self.parameters:
-            lines.append("    working_dir: Directory to run the command in (optional)")
+            if not self.parameters:
+                lines.append("")
+                lines.append("PARAMETERS:")
+                lines.append("")
+            lines.append("- working_dir [OPTIONAL] (string, directory path): Directory to run the command in")  # noqa: E501
 
-        # Join all lines with newlines to form the complete docstring
+        # Add NOTES section if the command could have side effects
+        cmd_lower = self.command_template.lower()
+        dangerous_operations = ["rm ", "remove ", "delete ", "mv ", "move ", "write ", "create "]
+        file_write_operators = [" > ", " >> ", "echo ", "cat ", "touch "]
+
+        has_dangerous_operation = any(op in cmd_lower for op in dangerous_operations)
+        has_file_write_operation = any(op in cmd_lower for op in file_write_operators)
+
+        if has_dangerous_operation or has_file_write_operation:
+            lines.append("")
+            lines.append("IMPORTANT NOTES:")
+            lines.append("")
+            if any(op in cmd_lower for op in ["rm ", "remove ", "delete "]):
+                lines.append("- This command can DELETE files or data. Use with caution.")
+            if any(op in cmd_lower for op in ["mv ", "move "]):
+                lines.append("- This command can MOVE files or data. Verify paths are correct.")
+            if any(op in cmd_lower for op in ["write ", "create "]) or " > " in cmd_lower or " >> " in cmd_lower:  # noqa: E501
+                lines.append("- This command can CREATE or MODIFY files or data.")
+
+        # Join all lines with newlines to form the complete description
         return "\n".join(lines)
 
 
