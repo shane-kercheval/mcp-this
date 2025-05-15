@@ -93,21 +93,37 @@ def get_default_config_path() -> Path | None:
     return None
 
 
-def load_config(config_path: str | None = None) -> dict:
+def load_config(config_path: str | None = None, config_value: str | None = None) -> dict:
     """
-    Load configuration from a YAML file.
+    Load configuration from a YAML file or JSON string.
 
     Args:
         config_path: Path to the YAML configuration file.
-                    If None, use MCP_THIS_CONFIG_PATH environment variable or default config.
+                    If None and config_value is None, use MCP_THIS_CONFIG_PATH environment variable 
+                    or default config.
+        config_value: JSON-structured configuration string.
+                    Takes precedence over config_path if both are provided.
 
     Returns:
         The loaded configuration dictionary.
 
     Raises:
-        ValueError: If no configuration path is provided and MCP_THIS_CONFIG_PATH is not set.
+        ValueError: If no configuration source is provided.
         FileNotFoundError: If the configuration file does not exist.
+        JSONDecodeError: If the JSON configuration string is invalid.
     """
+    # Priority: config_value > config_path > env var > default config
+    if config_value:
+        print("Loading configuration from JSON string")
+        import json
+        try:
+            config = json.loads(config_value)
+            if not config:
+                raise ValueError("Configuration value is empty")
+            return config
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Error parsing JSON configuration: {e}")
+    
     if not config_path:
         config_path = os.environ.get("MCP_THIS_CONFIG_PATH")
 
@@ -118,8 +134,9 @@ def load_config(config_path: str | None = None) -> dict:
             config_path = str(default_path)
         else:
             raise ValueError(
-                "No configuration path provided. Please set MCP_THIS_CONFIG_PATH environment variable, "  # noqa: E501
-                "pass a path, or include a default configuration in the package.",
+                "No configuration provided. Please provide --config_path, --config_value, "  # noqa: E501
+                "set MCP_THIS_CONFIG_PATH environment variable, "
+                "or include a default configuration in the package.",
             )
 
     config_path_obj = Path(config_path)
@@ -304,19 +321,23 @@ async def {function_name}({param_string}) -> str:
                 traceback.print_exc()
 
 
-def init_server(config_path: str | None = None) -> None:
+def init_server(config_path: str | None = None, config_value: str | None = None) -> None:
     """
     Initialize the server with the given configuration.
 
     Args:
         config_path: Path to the YAML configuration file.
-                    If None, use MCP_THIS_CONFIG_PATH environment variable or default config.
+                    If None and config_value is None, use MCP_THIS_CONFIG_PATH
+                    environment variable or default config.
+        config_value: JSON-structured configuration string.
+                    Takes precedence over config_path if both are provided.
 
     Raises:
         ValueError: If the configuration is invalid.
         FileNotFoundError: If the configuration file does not exist.
+        JSONDecodeError: If the JSON configuration string is invalid.
     """
-    config = load_config(config_path)
+    config = load_config(config_path, config_value)
     validate_config(config)
     register_tools(config)
 
@@ -328,11 +349,14 @@ def run_server() -> None:
 
 
 if __name__ == "__main__":
+    # This is used when directly executing the mcp_server.py file
+    # For normal usage, the __main__.py entry point should be used
 
     try:
         # Use environment variable for config path by default
         config_path = os.environ.get("MCP_THIS_CONFIG_PATH")
-        init_server(config_path)
+        config_value = None  # No direct JSON input when running as script
+        init_server(config_path=config_path, config_value=config_value)
         run_server()
     except Exception as e:
         print(f"Error: {e}")
