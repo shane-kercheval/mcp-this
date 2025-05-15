@@ -8,7 +8,6 @@ import shutil
 from pathlib import Path
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-
 from mcp_this.mcp_server import build_command, execute_command
 
 
@@ -51,7 +50,6 @@ class TestMCPServer:
             tool_names = [t.name for t in tools.tools]
             assert "example-tool" in tool_names
 
-
     @pytest.mark.asyncio
     async def test_call_tool(self, server_params: StdioServerParameters):
         """Test that a tool can be called and returns expected results."""
@@ -61,7 +59,6 @@ class TestMCPServer:
             assert result.content
             result_text = result.content[0].text
             assert "Hello, World!" in result_text
-
 
     @pytest.mark.asyncio
     async def test_tool_parameters(self, server_params: StdioServerParameters):
