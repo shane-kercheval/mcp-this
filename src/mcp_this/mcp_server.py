@@ -7,6 +7,7 @@ Each tool maps to a command-line command that can be executed by the server.
 
 import os
 import yaml
+import json
 import asyncio
 import subprocess
 import re
@@ -19,7 +20,25 @@ mcp = FastMCP("Dynamic CLI Tools")
 
 # Utility function to build command from template and parameters
 def build_command(command_template: str, parameters: dict[str, str]) -> str:
-    """Build a command from a template and parameters."""
+    r"""
+    Build a shell command from a template by substituting parameter placeholders.
+
+    Parameters are specified in the template using the format `<<parameter_name>>`.
+    When a parameter value is provided, its placeholder is replaced with the value.
+    If a parameter value is empty or None, the placeholder is removed completely.
+    Any parameter not found in the parameters dictionary will have its placeholder removed.
+    Any leftover placeholders are removed, and multiple spaces are normalized.
+
+    Args:
+        command_template: The command template with parameter placeholders.
+            Example: "tail -n <<lines>> -f \"<<file>>\""
+        parameters: Dictionary mapping parameter names to their values.
+            Example: {"lines": 10, "file": "/var/log/syslog"}
+
+    Returns:
+        The processed command string with parameters substituted and cleaned up.
+        Example: "tail -n 10 -f \"/var/log/syslog\""
+    """
     result = command_template
 
     # Replace each parameter placeholder with its value
@@ -31,8 +50,14 @@ def build_command(command_template: str, parameters: dict[str, str]) -> str:
             # Remove placeholder if no value provided
             result = result.replace(placeholder, "")
 
-    # Clean up any leftover placeholders (optional parameters not provided)
-    result = result.replace("<<", "").replace(">>", "")
+    # Find any remaining placeholders (parameters not in the dictionary)
+    import re
+    remaining_placeholders = re.findall(r'<<\w+>>', result)
+
+    # Remove each remaining placeholder
+    for placeholder in remaining_placeholders:
+        result = result.replace(placeholder, "")
+
     # Clean up multiple spaces
     return " ".join(result.split())
 
@@ -115,7 +140,6 @@ def load_config(config_path: str | None = None, config_value: str | None = None)
     # Priority: config_value > config_path > env var > default config
     if config_value:
         print("Loading configuration from JSON string")
-        import json
         try:
             config = json.loads(config_value)
             if not config:
@@ -351,7 +375,6 @@ def run_server() -> None:
 if __name__ == "__main__":
     # This is used when directly executing the mcp_server.py file
     # For normal usage, the __main__.py entry point should be used
-
     try:
         # Use environment variable for config path by default
         config_path = os.environ.get("MCP_THIS_CONFIG_PATH")
@@ -361,5 +384,3 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
-
-

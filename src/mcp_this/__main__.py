@@ -29,11 +29,9 @@ def find_default_config() -> str | None:
         pathlib.Path.home() / ".config" / "mcp-this" / "config.yaml",
         pathlib.Path("/etc/mcp-this/config.yaml"),
     ]
-
     for location in locations:
         if location.exists():
             return str(location)
-
     return None
 
 def main() -> None:
@@ -101,7 +99,6 @@ def main() -> None:
     try:
         # Initialize the server with the configuration
         init_server(config_path=config_path, config_value=config_value)
-
         # Run the MCP server with the specified transport
         mcp.run(transport=args.transport)
     except Exception as e:
