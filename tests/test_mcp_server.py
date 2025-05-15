@@ -1,10 +1,11 @@
 """Unit tests for the MCP server."""
 import pytest
-import json
-import yaml
 import os
 import tempfile
 import shutil
+import anyio
+import json
+import yaml
 from pathlib import Path
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -270,3 +271,111 @@ class TestExecuteCommand:
         assert "line1" in result
         assert "line2" in result
         assert "line3" in result
+
+
+    @pytest.mark.asyncio
+    async def test_large_output(self):
+        """Test executing a command that produces large output."""
+        # Generate a ~100KB output
+        cmd = "yes 'test line' | head -n 5000"
+        result = await execute_command(cmd)
+        # Check that we got substantial output (at least 10KB)
+        assert len(result) > 10000
+        assert "test line" in result
+
+    @pytest.mark.asyncio
+    async def test_shell_expansion(self):
+        """Test shell expansion and globbing in commands."""
+        # Create a temporary directory with multiple files
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Create some test files
+            for i in range(3):
+                path = Path(temp_dir) / f"test{i}.txt"
+                path.write_text(f"Content {i}")
+
+            # Use shell expansion to list files
+            cmd = f"ls {temp_dir}/*.txt"
+            result = await execute_command(cmd)
+
+            # Verify all files are listed
+            for i in range(3):
+                assert f"test{i}.txt" in result
+
+    @pytest.mark.asyncio
+    async def test_environment_variables(self):
+        """Test command with environment variables."""
+        # The command should have access to environment variables
+        cmd = "echo $HOME" if os.name != "nt" else "echo %USERPROFILE%"
+
+        result = await execute_command(cmd)
+        # Should contain a valid path
+        assert "/" in result or "\\" in result
+
+    @pytest.mark.asyncio
+    async def test_command_with_quotes(self):
+        """Test command with various types of quotes."""
+        # Command with nested quotes
+        cmd = 'echo "This has \'nested\' quotes"'
+        result = await execute_command(cmd)
+        assert "This has 'nested' quotes" in result
+
+    @pytest.mark.asyncio
+    async def test_command_with_redirection(self):
+        """Test command with redirection."""
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            temp_path = temp_file.name
+
+        try:
+            # Write to the temporary file using redirection
+            cmd = f"echo 'Redirected output' > {temp_path}"
+            await execute_command(cmd)
+
+            # Check if the redirection worked
+            async with await anyio.open_file(temp_path) as f:
+                content = await f.read()
+                assert "Redirected output" in content
+        finally:
+            # Clean up
+            os.unlink(temp_path)
+
+    @pytest.mark.asyncio
+    async def test_command_with_pipes(self):
+        """Test command with pipes."""
+        # Use pipes to process output
+        cmd = "echo 'line1\nline2\nline3' | grep 'line2'"
+        result = await execute_command(cmd)
+        assert "line2" in result
+        assert "line1" not in result
+        assert "line3" not in result
+
+    @pytest.mark.asyncio
+    async def test_consecutive_commands(self):
+        """Test executing consecutive commands with semicolons."""
+        cmd = "echo 'First'; echo 'Second'; echo 'Third'"
+        result = await execute_command(cmd)
+        assert "First" in result
+        assert "Second" in result
+        assert "Third" in result
+
+    @pytest.mark.asyncio
+    async def test_command_with_special_chars(self):
+        """Test command with special shell characters."""
+        cmd = "echo 'Special chars: & | ; < > ( ) $ \\ \"'"
+        result = await execute_command(cmd)
+        assert "Special chars: & | ; < > ( ) $ \\ \"" in result
+
+    @pytest.mark.asyncio
+    async def test_working_dir_with_special_chars(self, temp_dir: Path):
+        """Test working directory with special characters in the path."""
+        # Create a nested directory with special characters
+        special_dir = Path(temp_dir) / "special dir with spaces!"
+        special_dir.mkdir()
+
+        # Create a test file in the special directory
+        test_file = special_dir / "test.txt"
+        test_file.write_text("test content")
+
+        # Run a command in the special directory
+        result = await execute_command("ls", str(special_dir))
+        assert "test.txt" in result
