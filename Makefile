@@ -56,6 +56,12 @@ open_coverage: ## Open coverage report in browser
 
 verify: linting unittests coverage ## Run all verification checks
 
+chat:
+	uv run python examples/cli.py \
+		-chat \
+		--mcp_config examples/mcp_config_cli.json \
+		--model 'gpt-4o'
+
 ####
 # Packaging and Distribution
 ####
