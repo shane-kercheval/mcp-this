@@ -9,7 +9,7 @@ import yaml
 from pathlib import Path
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-from mcp_this.mcp_server import build_command, execute_command
+from mcp_this.mcp_server import build_command, execute_command, parse_tools
 
 
 SAMPLE_CONFIG_PATH = Path(__file__).parent / "fixtures" / "test_config.yaml"
@@ -379,3 +379,311 @@ class TestExecuteCommand:
         # Run a command in the special directory
         result = await execute_command("ls", str(special_dir))
         assert "test.txt" in result
+
+
+class TestParseTools:
+    """Test cases for the parse_tools function."""
+
+    def test_no_toolsets(self):
+        """Test parsing a configuration with no toolsets section."""
+        config = {"other_section": {}}
+        result = parse_tools(config)
+        assert result == []
+
+    def test_empty_toolsets(self):
+        """Test parsing a configuration with an empty toolsets section."""
+        config = {"toolsets": {}}
+        result = parse_tools(config)
+        assert isinstance(result, list)
+        assert len(result) == 0
+
+    def test_empty_tools(self):
+        """Test parsing a configuration with an empty tools section."""
+        config = {
+            "toolsets": {
+                "example": {
+                    "tools": {},
+                },
+            },
+        }
+        result = parse_tools(config)
+        assert isinstance(result, list)
+        assert len(result) == 0
+
+    def test_basic_tool(self):
+        """Test parsing a configuration with a basic tool."""
+        config = {
+            "toolsets": {
+                "example": {
+                    "tools": {
+                        "tool": {
+                            "description": "A test tool",
+                            "execution": {
+                                "command": "echo Hello!",
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(config)
+        assert isinstance(result, list)
+        assert len(result) == 1
+
+        tool = result[0]
+        assert tool["toolset_name"] == "example"
+        assert tool["tool_name"] == "tool"
+        assert tool["full_tool_name"] == "example-tool"
+        assert tool["function_name"] == "example_tool"
+        assert tool["command_template"] == "echo Hello!"
+        assert tool["description"] == "A test tool"
+        assert not tool["uses_working_dir"]
+
+    def test_tool_with_same_name_as_toolset(self):
+        """Test parsing where tool name equals toolset name."""
+        config = {
+            "toolsets": {
+                "example": {
+                    "tools": {
+                        "example": {
+                            "description": "A test tool",
+                            "execution": {
+                                "command": "echo Hello!",
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(config)
+        assert len(result) == 1
+        tool = result[0]
+        assert tool["full_tool_name"] == "example"  # Not prefixed with toolset
+        assert tool["function_name"] == "example"
+
+    def test_tool_with_parameters(self):
+        """Test parsing a tool with parameters."""
+        config = {
+            "toolsets": {
+                "example": {
+                    "tools": {
+                        "greet": {
+                            "description": "A greeting tool",
+                            "execution": {
+                                "command": "echo Hello, <<name>>!",
+                            },
+                            "parameters": {
+                                "name": {
+                                    "description": "Your name",
+                                    "required": False,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(config)
+        assert len(result) == 1
+        tool = result[0]
+        assert tool["parameters"] == {"name": {"description": "Your name", "required": False}}
+        assert tool["param_string"] == "name: str = ''"
+        assert "params['name'] = name" in tool["exec_code"]
+        assert "tool_info" in tool
+        assert tool["tool_info"]["parameters"] == ["name"]
+
+    def test_tool_with_required_parameters(self):
+        """Test parsing a tool with required parameters."""
+        config = {
+            "toolsets": {
+                "example": {
+                    "tools": {
+                        "greet": {
+                            "description": "A greeting tool",
+                            "execution": {
+                                "command": "echo Hello, <<name>>!",
+                            },
+                            "parameters": {
+                                "name": {
+                                    "description": "Your name",
+                                    "required": True,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(config)
+        assert len(result) == 1
+        tool = result[0]
+        assert tool["param_string"] == "name"  # No default for required params
+
+    def test_tool_with_working_dir(self):
+        """Test parsing a tool with uses_working_dir flag."""
+        config = {
+            "toolsets": {
+                "example": {
+                    "tools": {
+                        "list": {
+                            "description": "List files",
+                            "execution": {
+                                "command": "ls",
+                                "uses_working_dir": True,
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(config)
+        assert len(result) == 1
+        tool = result[0]
+        assert tool["uses_working_dir"] is True
+        assert tool["param_string"] == "working_dir: str = ''"
+        assert "return await execute_command(cmd, working_dir)" in tool["exec_code"]
+
+    def test_tool_with_working_dir_in_params(self):
+        """Test parsing a tool with working_dir as an explicit parameter."""
+        config = {
+            "toolsets": {
+                "example": {
+                    "tools": {
+                        "list": {
+                            "description": "List files",
+                            "execution": {
+                                "command": "ls <<path>>",
+                                "uses_working_dir": True,
+                            },
+                            "parameters": {
+                                "path": {
+                                    "description": "Path to list",
+                                    "required": False,
+                                },
+                                "working_dir": {
+                                    "description": "Working directory",
+                                    "required": False,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(config)
+        assert len(result) == 1
+        tool = result[0]
+        assert "working_dir: str = ''" in tool["param_string"]
+        assert "return await execute_command(cmd, params.get('working_dir', ''))" in tool["exec_code"]  # noqa: E501
+
+    def test_tool_with_help_text(self):
+        """Test parsing a tool with help text."""
+        config = {
+            "toolsets": {
+                "example": {
+                    "tools": {
+                        "tool": {
+                            "description": "A test tool",
+                            "help_text": "This is a longer help text",
+                            "execution": {
+                                "command": "echo Hello!",
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(config)
+        assert len(result) == 1
+        tool = result[0]
+        assert tool["description"] == "A test tool"
+        assert tool["help_text"] == "This is a longer help text"
+        assert tool["full_description"] == "A test tool\n\nThis is a longer help text"
+
+    def test_multiple_tools(self):
+        """Test parsing configuration with multiple tools in different toolsets."""
+        config = {
+            "toolsets": {
+                "toolset1": {
+                    "tools": {
+                        "tool1": {
+                            "description": "Tool 1",
+                            "execution": {
+                                "command": "echo Tool 1",
+                            },
+                        },
+                    },
+                },
+                "toolset2": {
+                    "tools": {
+                        "tool2": {
+                            "description": "Tool 2",
+                            "execution": {
+                                "command": "echo Tool 2",
+                            },
+                        },
+                        "tool3": {
+                            "description": "Tool 3",
+                            "execution": {
+                                "command": "echo Tool 3",
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(config)
+        assert len(result) == 3
+
+        # Extract full tool names for easier testing
+        tool_names = [tool["full_tool_name"] for tool in result]
+        assert "toolset1-tool1" in tool_names
+        assert "toolset2-tool2" in tool_names
+        assert "toolset2-tool3" in tool_names
+
+    def test_tool_with_invalid_config_skipped(self):
+        """Test that invalid tool configurations are skipped without throwing errors."""
+        # This test would need some way to induce an error in tool parsing
+        # For example, by making a parameter name invalid for a Python identifier
+        config = {
+            "toolsets": {
+                "example": {
+                    "tools": {
+                        "valid": {
+                            "description": "Valid tool",
+                            "execution": {
+                                "command": "echo Valid",
+                            },
+                        },
+                        # This will cause an exception in the try block, but should be caught
+                        "invalid": None,  # This should cause an exception but be caught
+                    },
+                },
+            },
+        }
+        # This shouldn't raise an exception
+        result = parse_tools(config)
+        assert len(result) == 1
+        assert result[0]["full_tool_name"] == "example-valid"
+
+    def test_function_name_sanitized(self):
+        """Test that function names are properly sanitized from invalid characters."""
+        config = {
+            "toolsets": {
+                "test-toolset": {  # Contains a hyphen
+                    "tools": {
+                        "test.tool": {  # Contains a period
+                            "description": "Test tool",
+                            "execution": {
+                                "command": "echo Test",
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(config)
+        assert len(result) == 1
+        tool = result[0]
+        assert tool["full_tool_name"] == "test-toolset-test.tool"
+        assert tool["function_name"] == "test_toolset_test_tool"  # Sanitized

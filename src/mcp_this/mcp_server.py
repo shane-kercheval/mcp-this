@@ -5,6 +5,7 @@ MCP Server that dynamically creates command-line tools based on a YAML configura
 Each tool maps to a command-line command that can be executed by the server.
 """
 import os
+from textwrap import dedent
 import yaml
 import json
 import re
@@ -242,17 +243,34 @@ def validate_config(config: dict) -> None:
                 raise ValueError(f"Tool '{toolset_name}.{tool_name}' execution must contain a 'command'")  # noqa: E501
 
 
-def register_tools(config: dict) -> None:  # noqa: PLR0912
+def parse_tools(config: dict) -> list[dict]:  # noqa: PLR0912
     """
-    Register tools from configuration.
+    Parse tools from configuration and extract all necessary information.
 
     Args:
         config: The configuration dictionary.
+
+    Returns:
+        A list of dictionaries, each containing information about a tool:
+        - 'toolset_name': Name of the toolset
+        - 'tool_name': Name of the tool
+        - 'full_tool_name': Combined name used for registration
+        - 'function_name': Valid Python identifier for the function
+        - 'command_template': Command template from execution section
+        - 'uses_working_dir': Whether the tool uses a working directory
+        - 'description': Tool description
+        - 'help_text': Tool help text
+        - 'full_description': Combined description and help text
+        - 'parameters': Dictionary of parameter configurations
+        - 'param_string': Parameter string for function definition
+        - 'exec_code': Executable code for function creation
+        - 'tool_info': Dictionary with info needed by the generated function
     """
     if 'toolsets' not in config:
         print("No toolsets found in configuration")
-        return
+        return []
 
+    tools_info = []
     toolsets = config['toolsets']
     print(f"Found {len(toolsets)} toolset(s) in configuration")
 
@@ -307,24 +325,16 @@ def register_tools(config: dict) -> None:  # noqa: PLR0912
                     param_parts.append("working_dir: str = ''")
 
                 param_string = ", ".join(param_parts)
-                # Create a unique function for each tool
-                # We'll use a simple technique to create a function with specific parameters
-                # First create a unique namespace for this function
-                tool_namespace = {
-                    "tool_info": tool_info,
-                    "build_command": build_command,
-                    "execute_command": execute_command,
-                }
 
                 # Create the function definition code
-                exec_code = f"""
-async def {function_name}({param_string}) -> str:
-    \"\"\"
-    {full_description}
-    \"\"\"
-    # Collect parameters
-    params = {{}}
-"""
+                exec_code = dedent(f"""
+                async def {function_name}({param_string}) -> str:
+                    \"\"\"
+                    {full_description}
+                    \"\"\"
+                    # Collect parameters
+                    params = {{}}
+                """)
 
                 # Add code to collect parameters
                 for param_name in parameters:
@@ -333,15 +343,15 @@ async def {function_name}({param_string}) -> str:
                     exec_code += f"    params['{param_name}'] = {param_name}\n"
 
                 # Add code to build and execute the command
-                exec_code += """
-    # Get command template from tool_info
-    command_template = tool_info["command_template"]
-
-    # Build the command
-    cmd = build_command(command_template, params)
-
-    # Execute the command
-"""
+                temp_code = dedent("""
+                    # Get command template from tool_info
+                    command_template = tool_info["command_template"]
+                    # Build the command
+                    cmd = build_command(command_template, params)
+                    # Execute the command
+                """)
+                # re-indent 4 spaces
+                exec_code += "\n".join("    " + line for line in temp_code.splitlines()) + "    \n"
 
                 # Check if the working_dir is a parameter specified in the tool config
                 if uses_working_dir:
@@ -354,15 +364,70 @@ async def {function_name}({param_string}) -> str:
                 else:
                     exec_code += "    return await execute_command(cmd)\n"
 
-                # Execute the code to create the function
-                exec(exec_code, tool_namespace)
-                # Get the created function
-                handler = tool_namespace[function_name]
-                # Register the function with MCP
-                mcp.tool(name=full_tool_name, description=full_description)(handler)
+                tool_data = {
+                    'toolset_name': toolset_name,
+                    'tool_name': tool_name,
+                    'full_tool_name': full_tool_name,
+                    'function_name': function_name,
+                    'command_template': command_template,
+                    'uses_working_dir': uses_working_dir,
+                    'description': description,
+                    'help_text': help_text,
+                    'full_description': full_description,
+                    'parameters': parameters,
+                    'param_string': param_string,
+                    'exec_code': exec_code,
+                    'tool_info': tool_info,
+                }
+                tools_info.append(tool_data)
             except Exception:
                 import traceback
                 traceback.print_exc()
+
+    return tools_info
+
+
+def register_parsed_tools(tools_info: list[dict]) -> None:
+    """
+    Register tools with MCP based on parsed tool information.
+
+    Args:
+        tools_info: List of tool information dictionaries from parse_tools().
+    """
+    for tool_data in tools_info:
+        try:
+            # Create a unique namespace for this function
+            tool_namespace = {
+                "tool_info": tool_data['tool_info'],
+                "build_command": build_command,
+                "execute_command": execute_command,
+            }
+
+            # Execute the code to create the function
+            exec(tool_data['exec_code'], tool_namespace)
+
+            # Get the created function
+            handler = tool_namespace[tool_data['function_name']]
+
+            # Register the function with MCP
+            mcp.tool(
+                name=tool_data['full_tool_name'],
+                description=tool_data['full_description'],
+            )(handler)
+        except Exception:
+            import traceback
+            traceback.print_exc()
+
+
+def register_tools(config: dict) -> None:
+    """
+    Register tools from configuration.
+
+    Args:
+        config: The configuration dictionary.
+    """
+    tools_info = parse_tools(config)
+    register_parsed_tools(tools_info)
 
 
 def init_server(config_path: str | None = None, config_value: str | None = None) -> None:
