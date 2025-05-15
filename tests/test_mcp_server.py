@@ -1,6 +1,5 @@
 """Unit tests for the MCP server."""
 import pytest
-import os
 from pathlib import Path
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -13,14 +12,10 @@ SAMPLE_CONFIG_PATH = Path(__file__).parent / "fixtures" / "test_config.yaml"
 def server_params():
     """Create server parameters for connecting to our MCP server."""
     assert SAMPLE_CONFIG_PATH.exists(), f"Test config not found at {SAMPLE_CONFIG_PATH}"
-    # Create environment variables for the server
-    env = os.environ.copy()
-    env["MCP_THIS_CONFIG_PATH"] = str(SAMPLE_CONFIG_PATH)
-    # Return the server parameters
+    # Return the server parameters with config path as an argument
     return StdioServerParameters(
         command="python",
-        args=["-m", "mcp_this.mcp_server"],  # Use your module path
-        env=env,
+        args=["-m", "mcp_this", "--config", str(SAMPLE_CONFIG_PATH)],
     )
 
 
