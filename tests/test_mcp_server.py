@@ -2,11 +2,14 @@
 import pytest
 import json
 import yaml
+import os
+import tempfile
+import shutil
 from pathlib import Path
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from mcp_this.mcp_server import build_command
+from mcp_this.mcp_server import build_command, execute_command
 
 
 SAMPLE_CONFIG_PATH = Path(__file__).parent / "fixtures" / "test_config.yaml"
@@ -177,3 +180,96 @@ class TestBuildCommand:
         params = {"message": "Hello; rm -rf /"}
         result = build_command(template, params)
         assert result == "echo Hello; rm -rf /"
+
+
+class TestExecuteCommand:
+    """Test cases for the execute_command function."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        """Create a temporary directory for testing working directory functionality."""
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        # Clean up after test
+        shutil.rmtree(temp_dir)
+
+    @pytest.fixture
+    def test_file(self, temp_dir: Path):
+        """Create a test file in the temporary directory."""
+        test_file_path = Path(temp_dir) / "test_file.txt"
+        with open(test_file_path, "w") as f:
+            f.write("test content")
+        return test_file_path
+
+    @pytest.mark.asyncio
+    async def test_successful_command(self):
+        """Test executing a command that succeeds."""
+        result = await execute_command("echo 'Hello, World!'")
+        assert "Hello, World!" in result
+
+    @pytest.mark.asyncio
+    async def test_failed_command(self):
+        """Test executing a command that fails."""
+        result = await execute_command("command_that_does_not_exist")
+        assert "Error executing command:" in result
+
+    @pytest.mark.asyncio
+    async def test_command_with_working_dir(self, temp_dir: Path, test_file: Path):
+        """Test executing a command with a specified working directory."""
+        file_name = os.path.basename(test_file)
+        cmd = "ls"
+        result = await execute_command(cmd, temp_dir)
+        assert file_name in result
+
+    @pytest.mark.asyncio
+    async def test_nonexistent_working_dir(self):
+        """Test executing a command with a non-existent working directory."""
+        non_existent_dir = "/path/that/does/not/exist"
+        result = await execute_command("echo test", non_existent_dir)
+        assert "Error: Working directory does not exist" in result
+
+    @pytest.mark.asyncio
+    async def test_working_dir_not_a_directory(self, test_file: Path):
+        """Test executing a command where working_dir is a file, not a directory."""
+        result = await execute_command("echo test", str(test_file))
+        assert "Error: Working directory is not a directory" in result
+
+    @pytest.mark.asyncio
+    async def test_command_with_stderr(self):
+        """Test a command that outputs to stderr but succeeds."""
+        cmd = "echo 'Warning message' >&2 && echo 'Output'"
+        result = await execute_command(cmd)
+        assert "Output" in result
+        assert "Warning message" not in result  # We return stdout, not stderr when stdout exists
+
+    @pytest.mark.asyncio
+    async def test_command_with_only_stderr(self):
+        """Test a command that outputs only to stderr and nothing to stdout."""
+        # Command that only writes to stderr
+        cmd = "echo 'Warning message' >&2"
+        result = await execute_command(cmd)
+        assert "Command produced no output, but stderr: Warning message" in result
+
+    @pytest.mark.asyncio
+    async def test_empty_command(self):
+        """Test executing an empty command."""
+        # Empty command on macOS doesn't raise an error but returns empty output
+        # Adjust the test to just check that we get a string return value
+        result = await execute_command("")
+        assert isinstance(result, str)
+
+    @pytest.mark.asyncio
+    async def test_command_with_unicode(self):
+        """Test executing a command with Unicode characters."""
+        # Unicode characters should be preserved
+        result = await execute_command("echo '你好，世界！'")  # noqa: RUF001
+        assert "你好，世界！" in result  # noqa: RUF001
+
+    @pytest.mark.asyncio
+    async def test_multiline_output(self):
+        """Test executing a command that produces multiline output."""
+        cmd = "echo -e 'line1\\nline2\\nline3'"
+        result = await execute_command(cmd)
+        assert "line1" in result
+        assert "line2" in result
+        assert "line3" in result

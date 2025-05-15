@@ -4,13 +4,12 @@ MCP Server that dynamically creates command-line tools based on a YAML configura
 
 Each tool maps to a command-line command that can be executed by the server.
 """
-
 import os
 import yaml
 import json
+import re
 import asyncio
 import subprocess
-import re
 from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 import sys
@@ -18,7 +17,7 @@ import sys
 
 mcp = FastMCP("Dynamic CLI Tools")
 
-# Utility function to build command from template and parameters
+
 def build_command(command_template: str, parameters: dict[str, str]) -> str:
     r"""
     Build a shell command from a template by substituting parameter placeholders.
@@ -51,20 +50,41 @@ def build_command(command_template: str, parameters: dict[str, str]) -> str:
             result = result.replace(placeholder, "")
 
     # Find any remaining placeholders (parameters not in the dictionary)
-    import re
     remaining_placeholders = re.findall(r'<<\w+>>', result)
-
     # Remove each remaining placeholder
     for placeholder in remaining_placeholders:
         result = result.replace(placeholder, "")
-
     # Clean up multiple spaces
     return " ".join(result.split())
 
 
-# Execute a command with a working directory
-async def execute_command(cmd: str, working_dir: str = '') -> str:  # noqa: PLR0911
-    """Execute a shell command."""
+async def execute_command(cmd: str, working_dir: str | None = None) -> str:  # noqa: PLR0911
+    """
+    Execute a shell command asynchronously and return its output.
+
+    This function runs a shell command in a subprocess and captures both stdout and stderr.
+    It handles various error conditions such as invalid working directories, command execution
+    failures, and unexpected exceptions. The command output or error message is returned as a
+    string.
+
+    Args:
+        cmd: The shell command to execute.
+            Example: "ls -la /tmp"
+        working_dir: Optional directory to use as the working directory for the command.
+            If empty or None, the current working directory is used.
+
+    Returns:
+        A string containing one of the following:
+        - The stdout output if the command succeeds and produces output
+        - The stderr output if the command succeeds but stdout is empty
+        - An error message if the command fails or an exception occurs
+
+    Notes:
+        - The function validates the working directory's existence and permissions before execution
+        - Both stdout and stderr are captured and decoded as text
+        - Non-zero return codes result in an error message being returned
+        - Any exceptions during execution are caught and returned as error messages
+    """
     try:
         print(f"Executing command: {cmd}")
         if working_dir:
