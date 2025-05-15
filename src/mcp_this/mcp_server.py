@@ -259,8 +259,6 @@ def parse_tools(config: dict) -> list[dict]:  # noqa: PLR0912
         - 'command_template': Command template from execution section
         - 'uses_working_dir': Whether the tool uses a working directory
         - 'description': Tool description
-        - 'help_text': Tool help text
-        - 'full_description': Combined description and help text
         - 'parameters': Dictionary of parameter configurations
         - 'param_string': Parameter string for function definition
         - 'exec_code': Executable code for function creation
@@ -290,15 +288,12 @@ def parse_tools(config: dict) -> list[dict]:  # noqa: PLR0912
                 function_name = re.sub(r'[^a-zA-Z0-9_]', '_', full_tool_name)
 
                 # Get execution configuration
-                execution = tool_config.get('execution', {})
-                command_template = execution.get('command', '')
+                execution = tool_config['execution']
+                command_template = execution['command']
                 uses_working_dir = execution.get('uses_working_dir', False)
 
-                # Get description and help text
+                # Get description
                 description = tool_config.get('description', '')
-                help_text = tool_config.get('help_text', '')
-                full_description = f"{description}\n\n{help_text}" if help_text else description
-
                 # Get parameters configuration
                 parameters = tool_config.get('parameters', {})
 
@@ -330,7 +325,7 @@ def parse_tools(config: dict) -> list[dict]:  # noqa: PLR0912
                 exec_code = dedent(f"""
                 async def {function_name}({param_string}) -> str:
                     \"\"\"
-                    {full_description}
+                    {description}
                     \"\"\"
                     # Collect parameters
                     params = {{}}
@@ -372,8 +367,6 @@ def parse_tools(config: dict) -> list[dict]:  # noqa: PLR0912
                     'command_template': command_template,
                     'uses_working_dir': uses_working_dir,
                     'description': description,
-                    'help_text': help_text,
-                    'full_description': full_description,
                     'parameters': parameters,
                     'param_string': param_string,
                     'exec_code': exec_code,
@@ -402,17 +395,14 @@ def register_parsed_tools(tools_info: list[dict]) -> None:
                 "build_command": build_command,
                 "execute_command": execute_command,
             }
-
             # Execute the code to create the function
             exec(tool_data['exec_code'], tool_namespace)
-
             # Get the created function
             handler = tool_namespace[tool_data['function_name']]
-
             # Register the function with MCP
             mcp.tool(
                 name=tool_data['full_tool_name'],
-                description=tool_data['full_description'],
+                description=tool_data['description'],
             )(handler)
         except Exception:
             import traceback

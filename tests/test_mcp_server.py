@@ -576,29 +576,6 @@ class TestParseTools:
         assert "working_dir: str = ''" in tool["param_string"]
         assert "return await execute_command(cmd, params.get('working_dir', ''))" in tool["exec_code"]  # noqa: E501
 
-    def test_tool_with_help_text(self):
-        """Test parsing a tool with help text."""
-        config = {
-            "toolsets": {
-                "example": {
-                    "tools": {
-                        "tool": {
-                            "description": "A test tool",
-                            "help_text": "This is a longer help text",
-                            "execution": {
-                                "command": "echo Hello!",
-                            },
-                        },
-                    },
-                },
-            },
-        }
-        result = parse_tools(config)
-        assert len(result) == 1
-        tool = result[0]
-        assert tool["description"] == "A test tool"
-        assert tool["help_text"] == "This is a longer help text"
-        assert tool["full_description"] == "A test tool\n\nThis is a longer help text"
 
     def test_multiple_tools(self):
         """Test parsing configuration with multiple tools in different toolsets."""

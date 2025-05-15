@@ -67,7 +67,6 @@ toolsets:
     tools:
       tool_name:
         description: "Tool description"
-        help_text: "Detailed help text for the tool"
         execution:
           command: "command template with <<parameter>> placeholders"
           uses_working_dir: true/false
