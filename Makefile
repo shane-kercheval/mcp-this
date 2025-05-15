@@ -62,6 +62,11 @@ chat:
 		--mcp_config examples/mcp_config_cli.json \
 		--model 'gpt-4o'
 
+chat_tools:
+	uv run python examples/cli.py \
+		-tools \
+		--mcp_config examples/mcp_config_cli.json
+
 ####
 # Packaging and Distribution
 ####

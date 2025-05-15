@@ -31,14 +31,15 @@ def print_tool_infos(tool_infos: list[dict]) -> None:
         name = tool_info['name']
         server = tool_info['server']
         tool = tool_info['tool']
-        click.echo(f"{i}. {name} (Server: {server})")
-        click.echo(f"   Description: {tool.description.strip()}")
+        click.echo(f"{i}. {name} (Server: {server})\n")
+        click.echo(f"{tool.description.strip()}")
         if tool.parameters:
-            click.echo("   Parameters:")
+            click.echo("\n\nParameters:")
             for param in tool.parameters:
                 param_type = param.param_type.__name__ if hasattr(param.param_type, '__name__') else str(param.param_type)  # noqa: E501
                 required = "Required" if param.required else "Optional"
                 click.echo(f"     - {param.name} ({param_type}, {required})")
+        click.echo("\n---\n")
         click.echo("")
 
 
