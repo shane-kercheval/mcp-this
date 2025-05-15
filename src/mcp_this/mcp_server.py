@@ -265,7 +265,6 @@ def load_config(config_path: str | None = None, config_value: str | None = None)
     """
     # Priority: config_value > config_path > env var > default config
     if config_value:
-        print("Loading configuration from JSON string")
         try:
             config = json.loads(config_value)
             if not config:
@@ -293,7 +292,6 @@ def load_config(config_path: str | None = None, config_value: str | None = None)
     if not config_path_obj.is_file():
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
-    print(f"Loading configuration from: {config_path}")
     # Load configuration
     try:
         with open(config_path_obj) as f:
@@ -388,8 +386,6 @@ def parse_tools(config: dict) -> list[ToolInfo]:
     # Handle top-level tools if present
     if 'tools' in config:
         top_level_tools = config['tools']
-        print(f"Found {len(top_level_tools)} top-level tool(s) in configuration")
-
         for tool_name, tool_config in top_level_tools.items():
             try:
                 tool_info = create_tool_info(None, tool_name, tool_config)
@@ -401,12 +397,8 @@ def parse_tools(config: dict) -> list[ToolInfo]:
     # Handle tools within toolsets if present
     if 'toolsets' in config:
         toolsets = config['toolsets']
-        print(f"Found {len(toolsets)} toolset(s) in configuration")
-
         for toolset_name, toolset_config in toolsets.items():
             tools = toolset_config.get('tools', {})
-            print(f"Processing toolset '{toolset_name}' with {len(tools)} tools")
-
             for tool_name, tool_config in tools.items():
                 try:
                     tool_info = create_tool_info(toolset_name, tool_name, tool_config)
@@ -595,7 +587,6 @@ def init_server(config_path: str | None = None, config_value: str | None = None)
 
 def run_server() -> None:
     """Run the MCP server."""
-    print("Starting MCP server...")
     mcp.run(transport="stdio")
 
 
