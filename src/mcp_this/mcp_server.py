@@ -13,7 +13,61 @@ import asyncio
 import subprocess
 from pathlib import Path
 from mcp.server.fastmcp import FastMCP
+from dataclasses import dataclass
 import sys
+
+@dataclass
+class ToolInfo:
+    """Information about a parsed tool from the configuration."""
+
+    toolset_name: str
+    tool_name: str
+    full_tool_name: str
+    function_name: str
+    command_template: str
+    uses_working_dir: bool
+    description: str
+    parameters: dict[str, dict]
+    param_string: str
+    exec_code: str
+    runtime_info: dict[str, any]  # Information needed by the generated function at runtime
+
+    def get_full_description(self) -> str:
+        """
+        Build a comprehensive Python-style docstring for the tool.
+
+        Includes the tool description followed by the command template,
+        then parameter descriptions in standard docstring format.
+
+        Returns:
+            A formatted docstring with the tool description, command template, and parameter
+            details.
+        """
+        # Start with the tool description
+        lines = [self.description.strip()]
+
+        # Add a blank line and the command template
+        lines.append("")
+        lines.append("Command: " + self.command_template)
+
+        # Add Args section if there are parameters
+        if self.parameters:
+            lines.append("")
+            lines.append("Args:")
+
+            # Add each parameter with its description
+            for param_name, param_config in self.parameters.items():
+                desc = param_config.get("description", "")
+                required = param_config.get("required", False)
+                req_text = " (required)" if required else " (optional)"
+                lines.append(f"    {param_name}: {desc}{req_text}")
+
+        # Add working_dir parameter if not explicitly included but used
+        if self.uses_working_dir and "working_dir" not in self.parameters:
+            lines.append("    working_dir: Directory to run the command in (optional)")
+
+        # Join all lines with newlines to form the complete docstring
+        return "\n".join(lines)
 
 
 mcp = FastMCP("Dynamic CLI Tools")
@@ -243,7 +297,7 @@ def validate_config(config: dict) -> None:
                 raise ValueError(f"Tool '{toolset_name}.{tool_name}' execution must contain a 'command'")  # noqa: E501
 
 
-def parse_tools(config: dict) -> list[dict]:  # noqa: PLR0912
+def parse_tools(config: dict) -> list[ToolInfo]:  # noqa: PLR0912
     """
     Parse tools from configuration and extract all necessary information.
 
@@ -251,18 +305,7 @@ def parse_tools(config: dict) -> list[dict]:  # noqa: PLR0912
         config: The configuration dictionary.
 
     Returns:
-        A list of dictionaries, each containing information about a tool:
-        - 'toolset_name': Name of the toolset
-        - 'tool_name': Name of the tool
-        - 'full_tool_name': Combined name used for registration
-        - 'function_name': Valid Python identifier for the function
-        - 'command_template': Command template from execution section
-        - 'uses_working_dir': Whether the tool uses a working directory
-        - 'description': Tool description
-        - 'parameters': Dictionary of parameter configurations
-        - 'param_string': Parameter string for function definition
-        - 'exec_code': Executable code for function creation
-        - 'tool_info': Dictionary with info needed by the generated function
+        A list of ToolInfo objects, each containing information about a tool.
     """
     if 'toolsets' not in config:
         print("No toolsets found in configuration")
@@ -298,7 +341,7 @@ def parse_tools(config: dict) -> list[dict]:  # noqa: PLR0912
                 parameters = tool_config.get('parameters', {})
 
                 # Save a copy of the command template and parameter names for this specific tool
-                tool_info = {
+                runtime_info = {
                     "command_template": command_template,
                     "parameters": list(parameters.keys()),
                     "uses_working_dir": uses_working_dir,
@@ -359,20 +402,21 @@ def parse_tools(config: dict) -> list[dict]:  # noqa: PLR0912
                 else:
                     exec_code += "    return await execute_command(cmd)\n"
 
-                tool_data = {
-                    'toolset_name': toolset_name,
-                    'tool_name': tool_name,
-                    'full_tool_name': full_tool_name,
-                    'function_name': function_name,
-                    'command_template': command_template,
-                    'uses_working_dir': uses_working_dir,
-                    'description': description,
-                    'parameters': parameters,
-                    'param_string': param_string,
-                    'exec_code': exec_code,
-                    'tool_info': tool_info,
-                }
-                tools_info.append(tool_data)
+                # Create a ToolInfo object instead of a dictionary
+                tool_info = ToolInfo(
+                    toolset_name=toolset_name,
+                    tool_name=tool_name,
+                    full_tool_name=full_tool_name,
+                    function_name=function_name,
+                    command_template=command_template,
+                    uses_working_dir=uses_working_dir,
+                    description=description,
+                    parameters=parameters,
+                    param_string=param_string,
+                    exec_code=exec_code,
+                    runtime_info=runtime_info,
+                )
+                tools_info.append(tool_info)
             except Exception:
                 import traceback
                 traceback.print_exc()
@@ -380,29 +424,29 @@ def parse_tools(config: dict) -> list[dict]:  # noqa: PLR0912
     return tools_info
 
 
-def register_parsed_tools(tools_info: list[dict]) -> None:
+def register_parsed_tools(tools_info: list[ToolInfo]) -> None:
     """
     Register tools with MCP based on parsed tool information.
 
     Args:
-        tools_info: List of tool information dictionaries from parse_tools().
+        tools_info: List of ToolInfo objects from parse_tools().
     """
-    for tool_data in tools_info:
+    for tool_info in tools_info:
         try:
             # Create a unique namespace for this function
             tool_namespace = {
-                "tool_info": tool_data['tool_info'],
+                "tool_info": tool_info.runtime_info,
                 "build_command": build_command,
                 "execute_command": execute_command,
             }
             # Execute the code to create the function
-            exec(tool_data['exec_code'], tool_namespace)
+            exec(tool_info.exec_code, tool_namespace)
             # Get the created function
-            handler = tool_namespace[tool_data['function_name']]
+            handler = tool_namespace[tool_info.function_name]
             # Register the function with MCP
             mcp.tool(
-                name=tool_data['full_tool_name'],
-                description=tool_data['description'],
+                name=tool_info.full_tool_name,
+                description=tool_info.get_full_description(),
             )(handler)
         except Exception:
             import traceback

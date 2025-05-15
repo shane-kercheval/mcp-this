@@ -9,7 +9,7 @@ import yaml
 from pathlib import Path
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-from mcp_this.mcp_server import build_command, execute_command, parse_tools
+from mcp_this.mcp_server import build_command, execute_command, parse_tools, ToolInfo
 
 
 SAMPLE_CONFIG_PATH = Path(__file__).parent / "fixtures" / "test_config.yaml"
@@ -431,13 +431,14 @@ class TestParseTools:
         assert len(result) == 1
 
         tool = result[0]
-        assert tool["toolset_name"] == "example"
-        assert tool["tool_name"] == "tool"
-        assert tool["full_tool_name"] == "example-tool"
-        assert tool["function_name"] == "example_tool"
-        assert tool["command_template"] == "echo Hello!"
-        assert tool["description"] == "A test tool"
-        assert not tool["uses_working_dir"]
+        assert isinstance(tool, ToolInfo)
+        assert tool.toolset_name == "example"
+        assert tool.tool_name == "tool"
+        assert tool.full_tool_name == "example-tool"
+        assert tool.function_name == "example_tool"
+        assert tool.command_template == "echo Hello!"
+        assert tool.description == "A test tool"
+        assert not tool.uses_working_dir
 
     def test_tool_with_same_name_as_toolset(self):
         """Test parsing where tool name equals toolset name."""
@@ -458,8 +459,8 @@ class TestParseTools:
         result = parse_tools(config)
         assert len(result) == 1
         tool = result[0]
-        assert tool["full_tool_name"] == "example"  # Not prefixed with toolset
-        assert tool["function_name"] == "example"
+        assert tool.full_tool_name == "example"  # Not prefixed with toolset
+        assert tool.function_name == "example"
 
     def test_tool_with_parameters(self):
         """Test parsing a tool with parameters."""
@@ -486,11 +487,11 @@ class TestParseTools:
         result = parse_tools(config)
         assert len(result) == 1
         tool = result[0]
-        assert tool["parameters"] == {"name": {"description": "Your name", "required": False}}
-        assert tool["param_string"] == "name: str = ''"
-        assert "params['name'] = name" in tool["exec_code"]
-        assert "tool_info" in tool
-        assert tool["tool_info"]["parameters"] == ["name"]
+        assert tool.parameters == {"name": {"description": "Your name", "required": False}}
+        assert tool.param_string == "name: str = ''"
+        assert "params['name'] = name" in tool.exec_code
+        assert "command_template" in tool.runtime_info
+        assert tool.runtime_info["parameters"] == ["name"]
 
     def test_tool_with_required_parameters(self):
         """Test parsing a tool with required parameters."""
@@ -517,7 +518,7 @@ class TestParseTools:
         result = parse_tools(config)
         assert len(result) == 1
         tool = result[0]
-        assert tool["param_string"] == "name"  # No default for required params
+        assert tool.param_string == "name"  # No default for required params
 
     def test_tool_with_working_dir(self):
         """Test parsing a tool with uses_working_dir flag."""
@@ -539,9 +540,9 @@ class TestParseTools:
         result = parse_tools(config)
         assert len(result) == 1
         tool = result[0]
-        assert tool["uses_working_dir"] is True
-        assert tool["param_string"] == "working_dir: str = ''"
-        assert "return await execute_command(cmd, working_dir)" in tool["exec_code"]
+        assert tool.uses_working_dir is True
+        assert tool.param_string == "working_dir: str = ''"
+        assert "return await execute_command(cmd, working_dir)" in tool.exec_code
 
     def test_tool_with_working_dir_in_params(self):
         """Test parsing a tool with working_dir as an explicit parameter."""
@@ -573,8 +574,8 @@ class TestParseTools:
         result = parse_tools(config)
         assert len(result) == 1
         tool = result[0]
-        assert "working_dir: str = ''" in tool["param_string"]
-        assert "return await execute_command(cmd, params.get('working_dir', ''))" in tool["exec_code"]  # noqa: E501
+        assert "working_dir: str = ''" in tool.param_string
+        assert "return await execute_command(cmd, params.get('working_dir', ''))" in tool.exec_code
 
 
     def test_multiple_tools(self):
@@ -613,7 +614,7 @@ class TestParseTools:
         assert len(result) == 3
 
         # Extract full tool names for easier testing
-        tool_names = [tool["full_tool_name"] for tool in result]
+        tool_names = [tool.full_tool_name for tool in result]
         assert "toolset1-tool1" in tool_names
         assert "toolset2-tool2" in tool_names
         assert "toolset2-tool3" in tool_names
@@ -641,7 +642,7 @@ class TestParseTools:
         # This shouldn't raise an exception
         result = parse_tools(config)
         assert len(result) == 1
-        assert result[0]["full_tool_name"] == "example-valid"
+        assert result[0].full_tool_name == "example-valid"
 
     def test_function_name_sanitized(self):
         """Test that function names are properly sanitized from invalid characters."""
@@ -662,5 +663,130 @@ class TestParseTools:
         result = parse_tools(config)
         assert len(result) == 1
         tool = result[0]
-        assert tool["full_tool_name"] == "test-toolset-test.tool"
-        assert tool["function_name"] == "test_toolset_test_tool"  # Sanitized
+        assert tool.full_tool_name == "test-toolset-test.tool"
+        assert tool.function_name == "test_toolset_test_tool"  # Sanitized
+
+    def test_get_full_description_basic(self):
+        """Test get_full_description for a tool with no parameters."""
+        config = {
+            "toolsets": {
+                "example": {
+                    "tools": {
+                        "simple": {
+                            "description": "A simple test tool",
+                            "execution": {
+                                "command": "echo Test",
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(config)
+        assert len(result) == 1
+
+        tool = result[0]
+        desc = tool.get_full_description()
+        assert "A simple test tool" in desc
+        assert "Command: echo Test" in desc
+
+    def test_get_full_description_with_parameters(self):
+        """Test get_full_description for a tool with parameters."""
+        config = {
+            "toolsets": {
+                "example": {
+                    "tools": {
+                        "greet": {
+                            "description": "A greeting tool",
+                            "execution": {
+                                "command": "echo Hello, <<name>>!",
+                            },
+                            "parameters": {
+                                "name": {
+                                    "description": "Your name",
+                                    "required": False,
+                                },
+                                "greeting": {
+                                    "description": "Greeting to use",
+                                    "required": True,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(config)
+        assert len(result) == 1
+
+        tool = result[0]
+        desc = tool.get_full_description()
+        assert "A greeting tool" in desc
+        assert "Command: echo Hello, <<name>>!" in desc
+        assert "Args:" in desc
+        assert "name: Your name (optional)" in desc
+        assert "greeting: Greeting to use (required)" in desc
+
+    def test_get_full_description_with_working_dir(self):
+        """Test get_full_description for a tool with working directory."""
+        config = {
+            "toolsets": {
+                "example": {
+                    "tools": {
+                        "list": {
+                            "description": "List files in directory",
+                            "execution": {
+                                "command": "ls",
+                                "uses_working_dir": True,
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(config)
+        assert len(result) == 1
+
+        tool = result[0]
+        desc = tool.get_full_description()
+        assert "List files in directory" in desc
+        assert "Command: ls" in desc
+        assert "working_dir: Directory to run the command in (optional)" in desc
+
+    def test_get_full_description_with_complex_command(self):
+        """Test get_full_description with a complex command template."""
+        config = {
+            "toolsets": {
+                "example": {
+                    "tools": {
+                        "find": {
+                            "description": "Find files with pattern",
+                            "execution": {
+                                "command": "find . -name \"<<pattern>>\" -type f | xargs grep \"<<content>>\"",  # noqa: E501
+                                "uses_working_dir": True,
+                            },
+                            "parameters": {
+                                "pattern": {
+                                    "description": "File pattern to search for",
+                                    "required": True,
+                                },
+                                "content": {
+                                    "description": "Content to find in files",
+                                    "required": True,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(config)
+        assert len(result) == 1
+
+        tool = result[0]
+        desc = tool.get_full_description()
+        assert "Find files with pattern" in desc
+        assert 'Command: find . -name "<<pattern>>" -type f | xargs grep "<<content>>"' in desc
+        assert "Args:" in desc
+        assert "pattern: File pattern to search for (required)" in desc
+        assert "content: Content to find in files (required)" in desc
