@@ -9,7 +9,13 @@ import yaml
 from pathlib import Path
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-from mcp_this.mcp_server import build_command, execute_command, parse_tools, ToolInfo
+from mcp_this.mcp_server import (
+    build_command,
+    execute_command,
+    parse_tools,
+    ToolInfo,
+    validate_config,
+)
 
 
 SAMPLE_CONFIG_PATH = Path(__file__).parent / "fixtures" / "test_config.yaml"
@@ -36,90 +42,6 @@ def server_params(request: tuple) -> StdioServerParameters:
         command="python",
         args=["-m", "mcp_this", param_name, param_value],
     )
-
-
-class TestValidateConfig:
-    """Test cases for the validate_config function."""
-
-    def test_validate_top_level_tools(self):
-        """Test validating a config with top-level tools."""
-        # Valid config with top-level tools
-        valid_config = {
-            "tools": {
-                "echo": {
-                    "description": "Echo tool",
-                    "execution": {
-                        "command": "echo Hello",
-                    },
-                },
-            },
-        }
-        # This should not raise an exception
-        from mcp_this.mcp_server import validate_config
-        validate_config(valid_config)
-
-    def test_validate_missing_tools_and_toolsets(self):
-        """Test validating a config with neither tools nor toolsets."""
-        invalid_config = {
-            "other_section": {},
-        }
-        from mcp_this.mcp_server import validate_config
-        with pytest.raises(ValueError, match="Configuration must contain either a 'tools' or"):
-            validate_config(invalid_config)
-
-    def test_validate_invalid_tool_config(self):
-        """Test validating a config with invalid tool configuration."""
-        # Missing execution section
-        invalid_config = {
-            "tools": {
-                "echo": {
-                    "description": "Echo tool",
-                },
-            },
-        }
-        from mcp_this.mcp_server import validate_config
-        with pytest.raises(ValueError, match="must contain an 'execution' section"):
-            validate_config(invalid_config)
-
-        # Missing command in execution
-        invalid_config = {
-            "tools": {
-                "echo": {
-                    "description": "Echo tool",
-                    "execution": {},
-                },
-            },
-        }
-        with pytest.raises(ValueError, match="execution must contain a 'command'"):
-            validate_config(invalid_config)
-
-    def test_validate_combined_top_level_and_toolsets(self):
-        """Test validating a config with both top-level tools and toolsets."""
-        valid_config = {
-            "tools": {
-                "echo": {
-                    "description": "Echo tool",
-                    "execution": {
-                        "command": "echo Hello",
-                    },
-                },
-            },
-            "toolsets": {
-                "file": {
-                    "tools": {
-                        "cat": {
-                            "description": "Cat file",
-                            "execution": {
-                                "command": "cat file.txt",
-                            },
-                        },
-                    },
-                },
-            },
-        }
-        # This should not raise an exception
-        from mcp_this.mcp_server import validate_config
-        validate_config(valid_config)
 
 
 @pytest.mark.asyncio
@@ -1119,3 +1041,83 @@ class TestParseTools:
         desc = result[0].get_full_description()
         assert "IMPORTANT NOTES:" in desc
         assert "This command can CREATE or MODIFY files or data." in desc
+
+
+class TestValidateConfig:
+    """Test cases for the validate_config function."""
+
+    def test_validate_top_level_tools(self):
+        """Test validating a config with top-level tools."""
+        # Valid config with top-level tools
+        valid_config = {
+            "tools": {
+                "echo": {
+                    "description": "Echo tool",
+                    "execution": {
+                        "command": "echo Hello",
+                    },
+                },
+            },
+        }
+        # This should not raise an exception
+        validate_config(valid_config)
+
+    def test_validate_missing_tools_and_toolsets(self):
+        """Test validating a config with neither tools nor toolsets."""
+        invalid_config = {
+            "other_section": {},
+        }
+        with pytest.raises(ValueError, match="Configuration must contain either a 'tools' or"):
+            validate_config(invalid_config)
+
+    def test_validate_invalid_tool_config(self):
+        """Test validating a config with invalid tool configuration."""
+        # Missing execution section
+        invalid_config = {
+            "tools": {
+                "echo": {
+                    "description": "Echo tool",
+                },
+            },
+        }
+        with pytest.raises(ValueError, match="must contain an 'execution' section"):
+            validate_config(invalid_config)
+
+        # Missing command in execution
+        invalid_config = {
+            "tools": {
+                "echo": {
+                    "description": "Echo tool",
+                    "execution": {},
+                },
+            },
+        }
+        with pytest.raises(ValueError, match="execution must contain a 'command'"):
+            validate_config(invalid_config)
+
+    def test_validate_combined_top_level_and_toolsets(self):
+        """Test validating a config with both top-level tools and toolsets."""
+        valid_config = {
+            "tools": {
+                "echo": {
+                    "description": "Echo tool",
+                    "execution": {
+                        "command": "echo Hello",
+                    },
+                },
+            },
+            "toolsets": {
+                "file": {
+                    "tools": {
+                        "cat": {
+                            "description": "Cat file",
+                            "execution": {
+                                "command": "cat file.txt",
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        # This should not raise an exception
+        validate_config(valid_config)
