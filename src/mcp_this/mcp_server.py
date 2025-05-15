@@ -99,7 +99,7 @@ def load_config(config_path: str | None = None, config_value: str | None = None)
 
     Args:
         config_path: Path to the YAML configuration file.
-                    If None and config_value is None, use MCP_THIS_CONFIG_PATH environment variable 
+                    If None and config_value is None, use MCP_THIS_CONFIG_PATH environment variable
                     or default config.
         config_value: JSON-structured configuration string.
                     Takes precedence over config_path if both are provided.
@@ -123,7 +123,7 @@ def load_config(config_path: str | None = None, config_value: str | None = None)
             return config
         except json.JSONDecodeError as e:
             raise ValueError(f"Error parsing JSON configuration: {e}")
-    
+
     if not config_path:
         config_path = os.environ.get("MCP_THIS_CONFIG_PATH")
 
@@ -134,7 +134,7 @@ def load_config(config_path: str | None = None, config_value: str | None = None)
             config_path = str(default_path)
         else:
             raise ValueError(
-                "No configuration provided. Please provide --config_path, --config_value, "  # noqa: E501
+                "No configuration provided. Please provide --config_path, --config_value, "
                 "set MCP_THIS_CONFIG_PATH environment variable, "
                 "or include a default configuration in the package.",
             )
