@@ -16,6 +16,10 @@ from mcp.server.fastmcp import FastMCP
 from dataclasses import dataclass
 import sys
 
+
+mcp = FastMCP("Dynamic CLI Tools")
+
+
 @dataclass
 class ToolInfo:
     """Information about a parsed tool from the configuration."""
@@ -118,9 +122,6 @@ class ToolInfo:
 
         # Join all lines with newlines to form the complete description
         return "\n".join(lines)
-
-
-mcp = FastMCP("Dynamic CLI Tools")
 
 
 def build_command(command_template: str, parameters: dict[str, str]) -> str:
