@@ -1,6 +1,6 @@
 # MCP-This
 
-> MCP Server that exposes CLI commands as tools for Claude using YAML configuration files
+> MCP Server that exposes CLI commands as tools using YAML files.
 
 `mcp-this` is an MCP server that makes command-line tools available to Claude via the Model-Control-Protocol. The server reads YAML configuration files to define which commands should be exposed as MCP tools, along with their parameters and execution details. This allows Claude to execute CLI commands without requiring you to write any code.
 
