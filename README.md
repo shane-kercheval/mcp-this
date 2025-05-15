@@ -30,6 +30,24 @@ uv pip install mcp-this
 
 1. Create a YAML configuration file:
 
+### Using top-level tools
+
+```yaml
+tools:
+  curl:
+    description: "Make HTTP requests"
+    execution:
+      command: "curl <<arguments>>"
+    parameters:
+      arguments:
+        description: "Complete curl arguments including options and URL"
+        required: true
+```
+
+### Using toolsets
+
+A toolset is a way to organize groups of tools. In the future, toolsets could, for example, share settings like allow/deny lists. Toolsets could also be used, for example, to enable/disable/search for sets of tools.
+
 ```yaml
 toolsets:
   curl:
@@ -58,7 +76,11 @@ mcp-this
 
 ## 🛠️ Configuration Structure
 
-The configuration YAML files follow this structure:
+The configuration YAML files can follow one of two structures:
+
+### Toolsets Format (Original)
+
+This format organizes tools into logical groups called toolsets:
 
 ```yaml
 toolsets:
@@ -74,6 +96,52 @@ toolsets:
           parameter_name:
             description: "Parameter description"
             required: true/false
+```
+
+### Top-level Tools Format (New)
+
+This simpler format defines tools directly at the top level:
+
+```yaml
+tools:
+  tool_name:
+    description: "Tool description"
+    execution:
+      command: "command template with <<parameter>> placeholders"
+      uses_working_dir: true/false
+    parameters:
+      parameter_name:
+        description: "Parameter description"
+        required: true/false
+```
+
+### Combined Format
+
+You can also use both formats in the same file:
+
+```yaml
+tools:
+  echo:
+    description: "Simple echo command"
+    execution:
+      command: "echo <<message>>"
+    parameters:
+      message:
+        description: "Message to echo"
+        required: true
+
+toolsets:
+  file:
+    description: "File operations"
+    tools:
+      cat:
+        description: "Display file contents"
+        execution:
+          command: "cat <<file_path>>"
+        parameters:
+          file_path:
+            description: "Path to file"
+            required: true
 ```
 
 ### Parameter Substitution
@@ -195,7 +263,10 @@ MCP_THIS_CONFIG_PATH=./path/to/config.yaml uv run mcp dev ./src/mcp_this/mcp_ser
 
 ## 📚 Examples
 
-Check out the [examples](./examples) directory for sample configuration files and usage patterns.
+Check out the [examples](./examples) directory for sample configuration files and usage patterns:
+
+- [top_level_tools_example.yaml](./examples/top_level_tools_example.yaml): Example of the simplified top-level tools format
+- [toolset_example__curl.yaml](./examples/toolset_example__curl.yaml): Example of the original toolsets format
 
 ## 📜 License
 

@@ -38,6 +38,90 @@ def server_params(request: tuple) -> StdioServerParameters:
     )
 
 
+class TestValidateConfig:
+    """Test cases for the validate_config function."""
+
+    def test_validate_top_level_tools(self):
+        """Test validating a config with top-level tools."""
+        # Valid config with top-level tools
+        valid_config = {
+            "tools": {
+                "echo": {
+                    "description": "Echo tool",
+                    "execution": {
+                        "command": "echo Hello",
+                    },
+                },
+            },
+        }
+        # This should not raise an exception
+        from mcp_this.mcp_server import validate_config
+        validate_config(valid_config)
+
+    def test_validate_missing_tools_and_toolsets(self):
+        """Test validating a config with neither tools nor toolsets."""
+        invalid_config = {
+            "other_section": {},
+        }
+        from mcp_this.mcp_server import validate_config
+        with pytest.raises(ValueError, match="Configuration must contain either a 'tools' or"):
+            validate_config(invalid_config)
+
+    def test_validate_invalid_tool_config(self):
+        """Test validating a config with invalid tool configuration."""
+        # Missing execution section
+        invalid_config = {
+            "tools": {
+                "echo": {
+                    "description": "Echo tool",
+                },
+            },
+        }
+        from mcp_this.mcp_server import validate_config
+        with pytest.raises(ValueError, match="must contain an 'execution' section"):
+            validate_config(invalid_config)
+
+        # Missing command in execution
+        invalid_config = {
+            "tools": {
+                "echo": {
+                    "description": "Echo tool",
+                    "execution": {},
+                },
+            },
+        }
+        with pytest.raises(ValueError, match="execution must contain a 'command'"):
+            validate_config(invalid_config)
+
+    def test_validate_combined_top_level_and_toolsets(self):
+        """Test validating a config with both top-level tools and toolsets."""
+        valid_config = {
+            "tools": {
+                "echo": {
+                    "description": "Echo tool",
+                    "execution": {
+                        "command": "echo Hello",
+                    },
+                },
+            },
+            "toolsets": {
+                "file": {
+                    "tools": {
+                        "cat": {
+                            "description": "Cat file",
+                            "execution": {
+                                "command": "cat file.txt",
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        # This should not raise an exception
+        from mcp_this.mcp_server import validate_config
+        validate_config(valid_config)
+
+
 @pytest.mark.asyncio
 class TestMCPServer:
     """Test cases for the MCP server."""
@@ -384,8 +468,8 @@ class TestExecuteCommand:
 class TestParseTools:
     """Test cases for the parse_tools function."""
 
-    def test_no_toolsets(self):
-        """Test parsing a configuration with no toolsets section."""
+    def test_no_toolsets_or_tools(self):
+        """Test parsing a configuration with neither toolsets nor tools section."""
         config = {"other_section": {}}
         result = parse_tools(config)
         assert result == []
@@ -409,6 +493,95 @@ class TestParseTools:
         result = parse_tools(config)
         assert isinstance(result, list)
         assert len(result) == 0
+
+    def test_top_level_tools(self):
+        """Test parsing a configuration with top-level tools (no toolsets)."""
+        config = {
+            "tools": {
+                "echo": {
+                    "description": "Echo tool",
+                    "execution": {
+                        "command": "echo <<message>>",
+                    },
+                    "parameters": {
+                        "message": {
+                            "description": "Message to echo",
+                            "required": True,
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(config)
+        assert isinstance(result, list)
+        assert len(result) == 1
+
+        tool = result[0]
+        assert isinstance(tool, ToolInfo)
+        assert tool.toolset_name is None
+        assert tool.tool_name == "echo"
+        assert tool.full_tool_name == "echo"
+        assert tool.function_name == "echo"
+        assert tool.command_template == "echo <<message>>"
+        assert tool.description == "Echo tool"
+        assert not tool.uses_working_dir
+
+    def test_combined_top_level_and_toolsets(self):
+        """Test parsing a configuration with both top-level tools and toolsets."""
+        config = {
+            "tools": {
+                "echo": {
+                    "description": "Echo tool",
+                    "execution": {
+                        "command": "echo <<message>>",
+                    },
+                    "parameters": {
+                        "message": {
+                            "description": "Message to echo",
+                            "required": True,
+                        },
+                    },
+                },
+            },
+            "toolsets": {
+                "file": {
+                    "tools": {
+                        "cat": {
+                            "description": "Cat file contents",
+                            "execution": {
+                                "command": "cat <<file_path>>",
+                            },
+                            "parameters": {
+                                "file_path": {
+                                    "description": "Path to file",
+                                    "required": True,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_tools(config)
+        assert isinstance(result, list)
+        assert len(result) == 2
+
+        # Extract full tool names for easier testing
+        tool_names = [tool.full_tool_name for tool in result]
+        assert "echo" in tool_names
+        assert "file-cat" in tool_names
+
+        # Check the top-level tool
+        echo_tool = next(tool for tool in result if tool.full_tool_name == "echo")
+        assert echo_tool.toolset_name is None
+        assert echo_tool.tool_name == "echo"
+        assert echo_tool.command_template == "echo <<message>>"
+
+        # Check the toolset tool
+        cat_tool = next(tool for tool in result if tool.full_tool_name == "file-cat")
+        assert cat_tool.toolset_name == "file"
+        assert cat_tool.tool_name == "cat"
+        assert cat_tool.command_template == "cat <<file_path>>"
 
     def test_basic_tool(self):
         """Test parsing a configuration with a basic tool."""

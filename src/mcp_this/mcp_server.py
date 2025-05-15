@@ -24,7 +24,6 @@ mcp = FastMCP("Dynamic CLI Tools")
 class ToolInfo:
     """Information about a parsed tool from the configuration."""
 
-    toolset_name: str
     tool_name: str
     full_tool_name: str
     function_name: str
@@ -35,6 +34,7 @@ class ToolInfo:
     param_string: str
     exec_code: str
     runtime_info: dict[str, any]  # Information needed by the generated function at runtime
+    toolset_name: str = None  # Optional, could be None for top-level tools
 
     def get_full_description(self) -> str:  # noqa: PLR0912, PLR0915
         """
@@ -318,37 +318,62 @@ def validate_config(config: dict) -> None:
     if not isinstance(config, dict):
         raise ValueError("Configuration must be a dictionary")
 
-    if 'toolsets' not in config:
-        raise ValueError("Configuration must contain a 'toolsets' section")
+    # Check if we have either a top-level tools section or a toolsets section
+    if 'tools' not in config and 'toolsets' not in config:
+        raise ValueError("Configuration must contain either a 'tools' or 'toolsets' section")
 
-    if not isinstance(config['toolsets'], dict):
-        raise ValueError("'toolsets' must be a dictionary")
+    # Validate top-level tools section if present
+    if 'tools' in config:
+        if not isinstance(config['tools'], dict):
+            raise ValueError("'tools' must be a dictionary")
 
-    for toolset_name, toolset_config in config['toolsets'].items():
-        if not isinstance(toolset_config, dict):
-            raise ValueError(f"Toolset '{toolset_name}' must be a dictionary")
+        for tool_name, tool_config in config['tools'].items():
+            validate_tool_config(tool_name, tool_config)
 
-        if 'tools' not in toolset_config:
-            raise ValueError(f"Toolset '{toolset_name}' must contain a 'tools' section")
+    # Validate toolsets section if present
+    if 'toolsets' in config:
+        if not isinstance(config['toolsets'], dict):
+            raise ValueError("'toolsets' must be a dictionary")
 
-        if not isinstance(toolset_config['tools'], dict):
-            raise ValueError(f"Tools in toolset '{toolset_name}' must be a dictionary")
+        for toolset_name, toolset_config in config['toolsets'].items():
+            if not isinstance(toolset_config, dict):
+                raise ValueError(f"Toolset '{toolset_name}' must be a dictionary")
 
-        for tool_name, tool_config in toolset_config['tools'].items():
-            if not isinstance(tool_config, dict):
-                raise ValueError(f"Tool '{toolset_name}.{tool_name}' must be a dictionary")
+            if 'tools' not in toolset_config:
+                raise ValueError(f"Toolset '{toolset_name}' must contain a 'tools' section")
 
-            if 'execution' not in tool_config:
-                raise ValueError(f"Tool '{toolset_name}.{tool_name}' must contain an 'execution' section")  # noqa: E501
+            if not isinstance(toolset_config['tools'], dict):
+                raise ValueError(f"Tools in toolset '{toolset_name}' must be a dictionary")
 
-            if not isinstance(tool_config['execution'], dict):
-                raise ValueError(f"Execution section in '{toolset_name}.{tool_name}' must be a dictionary")  # noqa: E501
-
-            if 'command' not in tool_config['execution']:
-                raise ValueError(f"Tool '{toolset_name}.{tool_name}' execution must contain a 'command'")  # noqa: E501
+            for tool_name, tool_config in toolset_config['tools'].items():
+                validate_tool_config(f"{toolset_name}.{tool_name}", tool_config)
 
 
-def parse_tools(config: dict) -> list[ToolInfo]:  # noqa: PLR0912
+def validate_tool_config(tool_id: str, tool_config: dict) -> None:
+    """
+    Validate a tool configuration.
+
+    Args:
+        tool_id: The tool identifier (name or toolset.name format).
+        tool_config: The tool configuration.
+
+    Raises:
+        ValueError: If the tool configuration is invalid.
+    """
+    if not isinstance(tool_config, dict):
+        raise ValueError(f"Tool '{tool_id}' must be a dictionary")
+
+    if 'execution' not in tool_config:
+        raise ValueError(f"Tool '{tool_id}' must contain an 'execution' section")
+
+    if not isinstance(tool_config['execution'], dict):
+        raise ValueError(f"Execution section in '{tool_id}' must be a dictionary")
+
+    if 'command' not in tool_config['execution']:
+        raise ValueError(f"Tool '{tool_id}' execution must contain a 'command'")
+
+
+def parse_tools(config: dict) -> list[ToolInfo]:
     """
     Parse tools from configuration and extract all necessary information.
 
@@ -358,121 +383,153 @@ def parse_tools(config: dict) -> list[ToolInfo]:  # noqa: PLR0912
     Returns:
         A list of ToolInfo objects, each containing information about a tool.
     """
-    if 'toolsets' not in config:
-        print("No toolsets found in configuration")
-        return []
-
     tools_info = []
-    toolsets = config['toolsets']
-    print(f"Found {len(toolsets)} toolset(s) in configuration")
 
-    for toolset_name, toolset_config in toolsets.items():
-        tools = toolset_config.get('tools', {})
-        print(f"Processing toolset '{toolset_name}' with {len(tools)} tools")
+    # Handle top-level tools if present
+    if 'tools' in config:
+        top_level_tools = config['tools']
+        print(f"Found {len(top_level_tools)} top-level tool(s) in configuration")
 
-        for tool_name, tool_config in tools.items():
+        for tool_name, tool_config in top_level_tools.items():
             try:
-                # Determine the full tool name
-                if tool_name == toolset_name:
-                    full_tool_name = tool_name
-                else:
-                    full_tool_name = f"{toolset_name}-{tool_name}"
-
-                # Create a valid Python identifier for the function name
-                function_name = re.sub(r'[^a-zA-Z0-9_]', '_', full_tool_name)
-
-                # Get execution configuration
-                execution = tool_config['execution']
-                command_template = execution['command']
-                uses_working_dir = execution.get('uses_working_dir', False)
-
-                # Get description
-                description = tool_config.get('description', '')
-                # Get parameters configuration
-                parameters = tool_config.get('parameters', {})
-
-                # Save a copy of the command template and parameter names for this specific tool
-                runtime_info = {
-                    "command_template": command_template,
-                    "parameters": list(parameters.keys()),
-                    "uses_working_dir": uses_working_dir,
-                }
-
-                # Create parameter string for function definition
-                param_parts = []
-                for param_name, param_config in parameters.items():
-                    if param_config.get('required', False):
-                        param_parts.append(f"{param_name}")
-                    else:
-                        # Use str with empty string default for optional parameters
-                        # instead of Optional[str] to avoid MCP inspector issues
-                        param_parts.append(f"{param_name}: str = ''")
-
-                # Add working_dir parameter if needed
-                if uses_working_dir and 'working_dir' not in parameters:
-                    # Using str with empty string default, not Optional[str]
-                    param_parts.append("working_dir: str = ''")
-
-                param_string = ", ".join(param_parts)
-
-                # Create the function definition code
-                exec_code = dedent(f"""
-                async def {function_name}({param_string}) -> str:
-                    \"\"\"
-                    {description}
-                    \"\"\"
-                    # Collect parameters
-                    params = {{}}
-                """)
-
-                # Add code to collect parameters
-                for param_name in parameters:
-                    # Include parameters even if they're empty strings
-                    # This handles the case of str = '' default values
-                    exec_code += f"    params['{param_name}'] = {param_name}\n"
-
-                # Add code to build and execute the command
-                temp_code = dedent("""
-                    # Get command template from tool_info
-                    command_template = tool_info["command_template"]
-                    # Build the command
-                    cmd = build_command(command_template, params)
-                    # Execute the command
-                """)
-                # re-indent 4 spaces
-                exec_code += "\n".join("    " + line for line in temp_code.splitlines()) + "    \n"
-
-                # Check if the working_dir is a parameter specified in the tool config
-                if uses_working_dir:
-                    if 'working_dir' in parameters:
-                        # If working_dir is in parameters, use that value from params
-                        exec_code += "    return await execute_command(cmd, params.get('working_dir', ''))\n"  # noqa: E501
-                    else:
-                        # Otherwise use the working_dir from function parameter
-                        exec_code += "    return await execute_command(cmd, working_dir)\n"
-                else:
-                    exec_code += "    return await execute_command(cmd)\n"
-
-                # Create a ToolInfo object instead of a dictionary
-                tool_info = ToolInfo(
-                    toolset_name=toolset_name,
-                    tool_name=tool_name,
-                    full_tool_name=full_tool_name,
-                    function_name=function_name,
-                    command_template=command_template,
-                    uses_working_dir=uses_working_dir,
-                    description=description,
-                    parameters=parameters,
-                    param_string=param_string,
-                    exec_code=exec_code,
-                    runtime_info=runtime_info,
-                )
+                tool_info = create_tool_info(None, tool_name, tool_config)
                 tools_info.append(tool_info)
             except Exception:
                 import traceback
                 traceback.print_exc()
 
+    # Handle tools within toolsets if present
+    if 'toolsets' in config:
+        toolsets = config['toolsets']
+        print(f"Found {len(toolsets)} toolset(s) in configuration")
+
+        for toolset_name, toolset_config in toolsets.items():
+            tools = toolset_config.get('tools', {})
+            print(f"Processing toolset '{toolset_name}' with {len(tools)} tools")
+
+            for tool_name, tool_config in tools.items():
+                try:
+                    tool_info = create_tool_info(toolset_name, tool_name, tool_config)
+                    tools_info.append(tool_info)
+                except Exception:
+                    import traceback
+                    traceback.print_exc()
+
     return tools_info
+
+
+def create_tool_info(toolset_name: str, tool_name: str, tool_config: dict) -> ToolInfo:
+    """
+    Create a ToolInfo object from tool configuration.
+
+    Args:
+        toolset_name: The name of the toolset (can be None for top-level tools).
+        tool_name: The name of the tool.
+        tool_config: The tool configuration.
+
+    Returns:
+        A ToolInfo object.
+    """
+    # Determine the full tool name
+    if toolset_name is None:
+        # For top-level tools, full name is the same as tool name
+        full_tool_name = tool_name
+    elif tool_name == toolset_name:
+        # For tools with same name as toolset, don't prefix
+        full_tool_name = tool_name
+    else:
+        # Standard case: prefix toolset name
+        full_tool_name = f"{toolset_name}-{tool_name}"
+
+    # Create a valid Python identifier for the function name
+    function_name = re.sub(r'[^a-zA-Z0-9_]', '_', full_tool_name)
+
+    # Get execution configuration
+    execution = tool_config['execution']
+    command_template = execution['command']
+    uses_working_dir = execution.get('uses_working_dir', False)
+
+    # Get description
+    description = tool_config.get('description', '')
+    # Get parameters configuration
+    parameters = tool_config.get('parameters', {})
+
+    # Save a copy of the command template and parameter names for this specific tool
+    runtime_info = {
+        "command_template": command_template,
+        "parameters": list(parameters.keys()),
+        "uses_working_dir": uses_working_dir,
+    }
+
+    # Create parameter string for function definition
+    param_parts = []
+    for param_name, param_config in parameters.items():
+        if param_config.get('required', False):
+            param_parts.append(f"{param_name}")
+        else:
+            # Use str with empty string default for optional parameters
+            # instead of Optional[str] to avoid MCP inspector issues
+            param_parts.append(f"{param_name}: str = ''")
+
+    # Add working_dir parameter if needed
+    if uses_working_dir and 'working_dir' not in parameters:
+        # Using str with empty string default, not Optional[str]
+        param_parts.append("working_dir: str = ''")
+
+    param_string = ", ".join(param_parts)
+
+    # Create the function definition code
+    exec_code = dedent(f"""
+    async def {function_name}({param_string}) -> str:
+        \"\"\"
+        {description}
+        \"\"\"
+        # Collect parameters
+        params = {{}}
+    """)
+
+    # Add code to collect parameters
+    for param_name in parameters:
+        # Include parameters even if they're empty strings
+        # This handles the case of str = '' default values
+        exec_code += f"    params['{param_name}'] = {param_name}\n"
+
+    # Add code to build and execute the command
+    temp_code = dedent("""
+        # Get command template from tool_info
+        command_template = tool_info["command_template"]
+        # Build the command
+        cmd = build_command(command_template, params)
+        # Execute the command
+    """)
+    # re-indent 4 spaces
+    exec_code += "\n".join("    " + line for line in temp_code.splitlines()) + "    \n"
+
+    # Check if the working_dir is a parameter specified in the tool config
+    if uses_working_dir:
+        if 'working_dir' in parameters:
+            # If working_dir is in parameters, use that value from params
+            exec_code += "    return await execute_command(cmd, params.get('working_dir', ''))\n"
+        else:
+            # Otherwise use the working_dir from function parameter
+            exec_code += "    return await execute_command(cmd, working_dir)\n"
+    else:
+        exec_code += "    return await execute_command(cmd)\n"
+
+    # Create a ToolInfo object
+    return ToolInfo(
+        toolset_name=toolset_name,
+        tool_name=tool_name,
+        full_tool_name=full_tool_name,
+        function_name=function_name,
+        command_template=command_template,
+        uses_working_dir=uses_working_dir,
+        description=description,
+        parameters=parameters,
+        param_string=param_string,
+        exec_code=exec_code,
+        runtime_info=runtime_info,
+    )
 
 
 def register_parsed_tools(tools_info: list[ToolInfo]) -> None:
