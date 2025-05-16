@@ -45,7 +45,7 @@ linting: ## Run linting checks
 unittests: ## Run unit tests
 	uv run pytest tests -v --durations=10
 
-tests: linting unittests ## Run all tests (linting and unit tests)
+tests: linting coverage
 
 coverage: ## Run tests with coverage
 	uv run coverage run -m pytest --durations=0 tests
