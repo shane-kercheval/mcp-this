@@ -1,6 +1,8 @@
 """Helper functions and classes for managing tools and commands."""
-import asyncio
+import os
 import re
+import traceback
+import asyncio
 import subprocess
 from dataclasses import dataclass
 from textwrap import dedent
@@ -175,7 +177,6 @@ async def execute_command(cmd: str, working_dir: str | None = None) -> str:  # n
 
         # Check if the working directory exists and is accessible
         if working_dir:
-            import os
             if not os.path.exists(working_dir):
                 return f"Error: Working directory does not exist: {working_dir}"
             if not os.path.isdir(working_dir):
@@ -232,7 +233,6 @@ def parse_tools(config: dict) -> list[ToolInfo]:
                 tool_info = create_tool_info(None, tool_name, tool_config)
                 tools_info.append(tool_info)
             except Exception:
-                import traceback
                 traceback.print_exc()
 
     # Handle tools within toolsets if present
@@ -245,7 +245,6 @@ def parse_tools(config: dict) -> list[ToolInfo]:
                     tool_info = create_tool_info(toolset_name, tool_name, tool_config)
                     tools_info.append(tool_info)
                 except Exception:
-                    import traceback
                     traceback.print_exc()
 
     return tools_info
