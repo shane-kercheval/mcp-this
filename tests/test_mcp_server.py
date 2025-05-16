@@ -204,26 +204,8 @@ class TestExecuteCommand:
         result = await execute_command("command_that_does_not_exist")
         assert "Error executing command:" in result
 
-    @pytest.mark.asyncio
-    async def test_command_with_working_dir(self, temp_dir: Path, test_file: Path):
-        """Test executing a command with a specified working directory."""
-        file_name = os.path.basename(test_file)
-        cmd = "ls"
-        result = await execute_command(cmd, temp_dir)
-        assert file_name in result
 
-    @pytest.mark.asyncio
-    async def test_nonexistent_working_dir(self):
-        """Test executing a command with a non-existent working directory."""
-        non_existent_dir = "/path/that/does/not/exist"
-        result = await execute_command("echo test", non_existent_dir)
-        assert "Error: Working directory does not exist" in result
 
-    @pytest.mark.asyncio
-    async def test_working_dir_not_a_directory(self, test_file: Path):
-        """Test executing a command where working_dir is a file, not a directory."""
-        result = await execute_command("echo test", str(test_file))
-        assert "Error: Working directory is not a directory" in result
 
     @pytest.mark.asyncio
     async def test_command_with_stderr(self):
@@ -342,20 +324,6 @@ class TestExecuteCommand:
         result = await execute_command(cmd)
         assert "Special chars: & | ; < > ( ) $ \\ \"" in result
 
-    @pytest.mark.asyncio
-    async def test_working_dir_with_special_chars(self, temp_dir: Path):
-        """Test working directory with special characters in the path."""
-        # Create a nested directory with special characters
-        special_dir = Path(temp_dir) / "special dir with spaces!"
-        special_dir.mkdir()
-
-        # Create a test file in the special directory
-        test_file = special_dir / "test.txt"
-        test_file.write_text("test content")
-
-        # Run a command in the special directory
-        result = await execute_command("ls", str(special_dir))
-        assert "test.txt" in result
 
 
 class TestParseTools:
@@ -417,7 +385,6 @@ class TestParseTools:
         assert tool.function_name == "echo"
         assert tool.command_template == "echo <<message>>"
         assert tool.description == "Echo tool"
-        assert not tool.uses_working_dir
 
     def test_combined_top_level_and_toolsets(self):
         """Test parsing a configuration with both top-level tools and toolsets."""
@@ -504,7 +471,6 @@ class TestParseTools:
         assert tool.function_name == "example_tool"
         assert tool.command_template == "echo Hello!"
         assert tool.description == "A test tool"
-        assert not tool.uses_working_dir
 
     def test_tool_with_same_name_as_toolset(self):
         """Test parsing where tool name equals toolset name."""
@@ -586,62 +552,7 @@ class TestParseTools:
         tool = result[0]
         assert tool.param_string == "name"  # No default for required params
 
-    def test_tool_with_working_dir(self):
-        """Test parsing a tool with uses_working_dir flag."""
-        config = {
-            "toolsets": {
-                "example": {
-                    "tools": {
-                        "list": {
-                            "description": "List files",
-                            "execution": {
-                                "command": "ls",
-                                "uses_working_dir": True,
-                            },
-                        },
-                    },
-                },
-            },
-        }
-        result = parse_tools(config)
-        assert len(result) == 1
-        tool = result[0]
-        assert tool.uses_working_dir is True
-        assert tool.param_string == "working_dir: str = ''"
-        assert "return await execute_command(cmd, working_dir)" in tool.exec_code
 
-    def test_tool_with_working_dir_in_params(self):
-        """Test parsing a tool with working_dir as an explicit parameter."""
-        config = {
-            "toolsets": {
-                "example": {
-                    "tools": {
-                        "list": {
-                            "description": "List files",
-                            "execution": {
-                                "command": "ls <<path>>",
-                                "uses_working_dir": True,
-                            },
-                            "parameters": {
-                                "path": {
-                                    "description": "Path to list",
-                                    "required": False,
-                                },
-                                "working_dir": {
-                                    "description": "Working directory",
-                                    "required": False,
-                                },
-                            },
-                        },
-                    },
-                },
-            },
-        }
-        result = parse_tools(config)
-        assert len(result) == 1
-        tool = result[0]
-        assert "working_dir: str = ''" in tool.param_string
-        assert "return await execute_command(cmd, params.get('working_dir', ''))" in tool.exec_code
 
 
     def test_multiple_tools(self):
@@ -799,34 +710,6 @@ class TestParseTools:
         assert "- greeting [REQUIRED] (string): Greeting to use" in desc
         assert "EXAMPLE USAGE:" not in desc
 
-    def test_get_full_description_with_working_dir(self):
-        """Test get_full_description for a tool with working directory."""
-        config = {
-            "toolsets": {
-                "example": {
-                    "tools": {
-                        "list": {
-                            "description": "List files in directory",
-                            "execution": {
-                                "command": "ls",
-                                "uses_working_dir": True,
-                            },
-                        },
-                    },
-                },
-            },
-        }
-        result = parse_tools(config)
-        assert len(result) == 1
-
-        tool = result[0]
-        desc = tool.get_full_description()
-        assert "TOOL DESCRIPTION:" in desc
-        assert "List files in directory" in desc
-        assert "COMMAND CALLED:" in desc
-        assert "`ls`" in desc
-        assert "PARAMETERS:" in desc
-        assert "- working_dir [OPTIONAL] (string, directory path): Directory to run the command in" in desc  # noqa: E501
 
     def test_get_full_description_with_complex_command(self):
         """Test get_full_description with a complex command template."""
@@ -838,7 +721,6 @@ class TestParseTools:
                             "description": "Find files with pattern",
                             "execution": {
                                 "command": "find . -name \"<<pattern>>\" -type f | xargs grep \"<<content>>\"",  # noqa: E501
-                                "uses_working_dir": True,
                             },
                             "parameters": {
                                 "pattern": {
@@ -880,7 +762,6 @@ class TestParseTools:
                             "description": "Process files with given settings",
                             "execution": {
                                 "command": "process --input=<<file_path>> --pattern=<<search_pattern>> --name=<<user_name>>",  # noqa: E501
-                                "uses_working_dir": False,
                             },
                             "parameters": {
                                 "file_path": {

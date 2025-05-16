@@ -1,5 +1,4 @@
 """Helper functions and classes for managing tools and commands."""
-import os
 import re
 import traceback
 import asyncio
@@ -16,7 +15,6 @@ class ToolInfo:
     full_tool_name: str
     function_name: str
     command_template: str
-    uses_working_dir: bool
     description: str
     parameters: dict[str, dict]
     param_string: str
@@ -71,13 +69,6 @@ class ToolInfo:
 
                 lines.append(f"- {param_name} {req_status}{' ' + param_type if param_type else ''}: {desc}")  # noqa: E501
 
-        # Add working_dir parameter if not explicitly included but used
-        if self.uses_working_dir and "working_dir" not in self.parameters:
-            if not self.parameters:
-                lines.append("")
-                lines.append("PARAMETERS:")
-                lines.append("")
-            lines.append("- working_dir [OPTIONAL] (string, directory path): Directory to run the command in")  # noqa: E501
 
         # Add NOTES section if the command could have side effects
         cmd_lower = self.command_template.lower()
@@ -143,20 +134,17 @@ def build_command(command_template: str, parameters: dict[str, str]) -> str:
     return " ".join(result.split())
 
 
-async def execute_command(cmd: str, working_dir: str | None = None) -> str:  # noqa: PLR0911
+async def execute_command(cmd: str) -> str:
     """
     Execute a shell command asynchronously and return its output.
 
     This function runs a shell command in a subprocess and captures both stdout and stderr.
-    It handles various error conditions such as invalid working directories, command execution
-    failures, and unexpected exceptions. The command output or error message is returned as a
-    string.
+    It handles command execution failures and unexpected exceptions. The command output or
+    error message is returned as a string.
 
     Args:
         cmd: The shell command to execute.
             Example: "ls -la /tmp"
-        working_dir: Optional directory to use as the working directory for the command.
-            If empty or None, the current working directory is used.
 
     Returns:
         A string containing one of the following:
@@ -165,33 +153,18 @@ async def execute_command(cmd: str, working_dir: str | None = None) -> str:  # n
         - An error message if the command fails or an exception occurs
 
     Notes:
-        - The function validates the working directory's existence and permissions before execution
         - Both stdout and stderr are captured and decoded as text
         - Non-zero return codes result in an error message being returned
         - Any exceptions during execution are caught and returned as error messages
     """
     try:
         print(f"Executing command: {cmd}")
-        if working_dir:
-            print(f"Working directory: {working_dir}")
-
-        # Check if the working directory exists and is accessible
-        if working_dir:
-            if not os.path.exists(working_dir):
-                return f"Error: Working directory does not exist: {working_dir}"
-            if not os.path.isdir(working_dir):
-                return f"Error: Working directory is not a directory: {working_dir}"
-            if not os.access(working_dir, os.R_OK):
-                return f"Error: Working directory is not readable: {working_dir}"
-
-        # If working_dir is empty or None, use None for cwd to use current directory
-        effective_cwd = working_dir if working_dir else None
 
         process = await asyncio.create_subprocess_shell(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            cwd=effective_cwd,
+            cwd=None,
         )
 
         stdout, stderr = await process.communicate()
@@ -279,7 +252,6 @@ def create_tool_info(toolset_name: str, tool_name: str, tool_config: dict) -> To
     # Get execution configuration
     execution = tool_config['execution']
     command_template = execution['command']
-    uses_working_dir = execution.get('uses_working_dir', False)
 
     # Get description
     description = tool_config.get('description', '')
@@ -290,7 +262,6 @@ def create_tool_info(toolset_name: str, tool_name: str, tool_config: dict) -> To
     runtime_info = {
         "command_template": command_template,
         "parameters": list(parameters.keys()),
-        "uses_working_dir": uses_working_dir,
     }
 
     # Create parameter string for function definition
@@ -303,10 +274,6 @@ def create_tool_info(toolset_name: str, tool_name: str, tool_config: dict) -> To
             # instead of Optional[str] to avoid MCP inspector issues
             param_parts.append(f"{param_name}: str = ''")
 
-    # Add working_dir parameter if needed
-    if uses_working_dir and 'working_dir' not in parameters:
-        # Using str with empty string default, not Optional[str]
-        param_parts.append("working_dir: str = ''")
 
     param_string = ", ".join(param_parts)
 
@@ -337,16 +304,8 @@ def create_tool_info(toolset_name: str, tool_name: str, tool_config: dict) -> To
     # re-indent 4 spaces
     exec_code += "\n".join("    " + line for line in temp_code.splitlines()) + "    \n"
 
-    # Check if the working_dir is a parameter specified in the tool config
-    if uses_working_dir:
-        if 'working_dir' in parameters:
-            # If working_dir is in parameters, use that value from params
-            exec_code += "    return await execute_command(cmd, params.get('working_dir', ''))\n"
-        else:
-            # Otherwise use the working_dir from function parameter
-            exec_code += "    return await execute_command(cmd, working_dir)\n"
-    else:
-        exec_code += "    return await execute_command(cmd)\n"
+    # Execute the command with no working directory
+    exec_code += "    return await execute_command(cmd)\n"
 
     # Create a ToolInfo object
     return ToolInfo(
@@ -355,7 +314,6 @@ def create_tool_info(toolset_name: str, tool_name: str, tool_config: dict) -> To
         full_tool_name=full_tool_name,
         function_name=function_name,
         command_template=command_template,
-        uses_working_dir=uses_working_dir,
         description=description,
         parameters=parameters,
         param_string=param_string,

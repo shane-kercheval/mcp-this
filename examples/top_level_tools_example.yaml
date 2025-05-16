@@ -21,7 +21,6 @@ tools:
     description: "List directory contents"
     execution:
       command: "ls <<options>> <<directory>>"
-      uses_working_dir: true
     parameters:
       options:
         description: "Options for the ls command (e.g., -la)"

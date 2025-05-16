@@ -94,7 +94,6 @@ toolsets:
         description: "Tool description"
         execution:
           command: "command template with <<parameter>> placeholders"
-          uses_working_dir: true/false
         parameters:
           parameter_name:
             description: "Parameter description"
@@ -111,7 +110,6 @@ tools:
     description: "Tool description"
     execution:
       command: "command template with <<parameter>> placeholders"
-      uses_working_dir: true/false
     parameters:
       parameter_name:
         description: "Parameter description"

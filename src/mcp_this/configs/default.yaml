@@ -12,7 +12,6 @@ toolsets:
             find "src/*.py" "/path/to/directory"
         execution:
           command: "find <<working_dir>> -name \"<<pattern>>\" -type f 2>/dev/null | sort"
-          uses_working_dir: true
         parameters:
           pattern:
             description: "File pattern to search for (e.g., '*.txt', 'src/*.py')"
@@ -32,7 +31,6 @@ toolsets:
             search "TODO" "*.{js,ts,jsx,tsx}" 5 "/path/to/search"
         execution:
           command: "grep -n --color=never -A<<context_lines>> -B<<context_lines>> --include=\"<<file_pattern>>\" -r \"<<pattern>>\" <<working_dir>> 2>/dev/null || echo 'No matches found'"
-          uses_working_dir: true
         parameters:
           pattern:
             description: "Pattern to search for in files"
@@ -59,7 +57,6 @@ toolsets:
           Note: This creates a backup of modified files with .bak extension for safety.
         execution:
           command: "find <<working_dir>> -name \"<<file_pattern>>\" -type f -exec grep -l \"<<old_text>>\" {} \\; | xargs -I{} sh -c 'cp \"{}\" \"{}.bak\" && sed -i.tmp \"s/<<old_text>>/<<new_text>>/g\" \"{}\" && rm \"{}.tmp\" && echo \"Updated: {}\"' 2>/dev/null || echo 'No files matched or no replacements made'"
-          uses_working_dir: true
         parameters:
           old_text:
             description: "Text to replace"
@@ -84,7 +81,6 @@ toolsets:
             cat "/path/to/file.txt"
         execution:
           command: "cat -n <<file_path>> 2>/dev/null || echo 'File not found or cannot be read: <<file_path>>'"
-          uses_working_dir: false
         parameters:
           file_path:
             description: "Path to the file to display"
@@ -100,7 +96,6 @@ toolsets:
             head "/path/to/large.csv" 50
         execution:
           command: "head -n <<lines>> <<file_path>> 2>/dev/null || echo 'File not found or cannot be read: <<file_path>>'"
-          uses_working_dir: false
         parameters:
           file_path:
             description: "Path to the file to display"
@@ -119,7 +114,6 @@ toolsets:
             tail "/path/to/large.csv" 50
         execution:
           command: "tail -n <<lines>> <<file_path>> 2>/dev/null || echo 'File not found or cannot be read: <<file_path>>'"
-          uses_working_dir: false
         parameters:
           file_path:
             description: "Path to the file to display"
@@ -138,7 +132,6 @@ toolsets:
             count-lines "src/*.js" "/path/to/src"
         execution:
           command: "find <<working_dir>> -name \"<<pattern>>\" -type f -print0 | xargs -0 wc -l 2>/dev/null || echo 'No matching files found'"
-          uses_working_dir: true
         parameters:
           pattern:
             description: "File pattern to count lines in (e.g., '*.py', 'src/*.js')"
@@ -161,7 +154,6 @@ toolsets:
             ls "-la"
         execution:
           command: "ls <<options>> <<path>> 2>/dev/null || echo 'Directory not found or cannot be accessed: <<path>>'"
-          uses_working_dir: false
         parameters:
           options:
             description: "Options for ls command (e.g., '-la', '-lt')"
@@ -181,7 +173,6 @@ toolsets:
             tree "/path/to/directory" 3
         execution:
           command: "find <<path>> -type d -not -path \"*/\\.*\" | sort | sed -e \"s/[^-][^\\/]*\\//  |/g\" -e \"s/|\\([^ ]\\)/|--\\1/\" | head -n <<max_entries>> 2>/dev/null || echo 'Directory not found or cannot be accessed: <<path>>'"
-          uses_working_dir: false
         parameters:
           path:
             description: "Path to display (defaults to current directory if empty)"
@@ -201,7 +192,6 @@ toolsets:
             du "-h" "/path/to/directory"
         execution:
           command: "du <<options>> <<path>> 2>/dev/null | sort -nr | head -n 20 || echo 'Directory not found or cannot be accessed: <<path>>'"
-          uses_working_dir: false
         parameters:
           options:
             description: "Options for du command (e.g., '-h', '-s')"
@@ -223,7 +213,6 @@ toolsets:
             sort "-r" "numbers.txt"
         execution:
           command: "sort <<options>> <<file_path>> 2>/dev/null || echo 'File not found or cannot be read: <<file_path>>'"
-          uses_working_dir: false
         parameters:
           options:
             description: "Sort options (e.g., '-r' for reverse, '-n' for numeric)"
@@ -242,7 +231,6 @@ toolsets:
             uniq "-c" "sorted_file.txt"
         execution:
           command: "uniq <<options>> <<file_path>> 2>/dev/null || echo 'File not found or cannot be read: <<file_path>>'"
-          uses_working_dir: false
         parameters:
           options:
             description: "Uniq options (e.g., '-c' to count occurrences)"
@@ -261,7 +249,6 @@ toolsets:
             extract-json "log.txt" "10-20"
         execution:
           command: "if [ -z \"<<line_range>>\" ]; then cat <<file_path>>; else sed -n '<<line_range>>p' <<file_path>>; fi | grep -o '{.*}' | jq . 2>/dev/null || echo 'No valid JSON found or jq not installed'"
-          uses_working_dir: false
         parameters:
           file_path:
             description: "Path to the file containing JSON"
@@ -284,7 +271,6 @@ toolsets:
             ps "-aux"
         execution:
           command: "ps <<options>> 2>/dev/null"
-          uses_working_dir: false
         parameters:
           options:
             description: "Options for ps command (e.g., '-ef', '-aux')"
@@ -300,7 +286,6 @@ toolsets:
             df "-h"
         execution:
           command: "df <<options>> 2>/dev/null"
-          uses_working_dir: false
         parameters:
           options:
             description: "Options for df command (e.g., '-h', '-i')"
@@ -316,7 +301,6 @@ toolsets:
             uname "-a"
         execution:
           command: "uname <<options>> 2>/dev/null"
-          uses_working_dir: false
         parameters:
           options:
             description: "Options for uname command (e.g., '-a', '-s')"
@@ -328,7 +312,6 @@ toolsets:
           Display the username of the current user.
         execution:
           command: "whoami 2>/dev/null"
-          uses_working_dir: false
         parameters: {}
             
   network:
@@ -344,7 +327,6 @@ toolsets:
             ping "192.168.1.1" 3
         execution:
           command: "ping -c <<count>> <<host>> 2>/dev/null || echo 'Could not ping <<host>>'"
-          uses_working_dir: false
         parameters:
           host:
             description: "Host to ping (hostname or IP address)"
@@ -363,7 +345,6 @@ toolsets:
             curl "-I" "https://example.com"
         execution:
           command: "curl <<options>> \"<<url>>\" 2>/dev/null || echo 'Could not fetch <<url>>'"
-          uses_working_dir: false
         parameters:
           options:
             description: "Options for curl (e.g., '-I' for headers, '-L' for redirects)"
@@ -382,7 +363,6 @@ toolsets:
             wget "-q" "https://example.com/file.txt"
         execution:
           command: "wget <<options>> \"<<url>>\" 2>/dev/null || echo 'Could not download <<url>>'"
-          uses_working_dir: false
         parameters:
           options:
             description: "Options for wget (e.g., '-q' for quiet, '-O' for output)"
@@ -401,7 +381,6 @@ toolsets:
             dig "google.com" "MX"
         execution:
           command: "dig <<domain>> <<record_type>> 2>/dev/null || echo 'Could not perform DNS lookup for <<domain>>'"
-          uses_working_dir: false
         parameters:
           domain:
             description: "Domain to look up"
@@ -423,7 +402,6 @@ toolsets:
             git-status "/path/to/repo"
         execution:
           command: "cd <<repo_path>> && git status 2>/dev/null || echo 'Not a git repository or git command not found'"
-          uses_working_dir: true
         parameters:
           repo_path:
             description: "Path to the git repository (defaults to current directory if empty)"
@@ -440,7 +418,6 @@ toolsets:
             git-log "--oneline --graph" 10
         execution:
           command: "cd <<repo_path>> && git log <<options>> -n <<limit>> 2>/dev/null || echo 'Not a git repository or git command not found'"
-          uses_working_dir: true
         parameters:
           options:
             description: "Git log options (e.g., '--oneline', '--graph')"
@@ -463,7 +440,6 @@ toolsets:
             git-diff "HEAD~1" "/path/to/repo"
         execution:
           command: "cd <<repo_path>> && git diff <<target>> 2>/dev/null || echo 'Not a git repository or git command not found'"
-          uses_working_dir: true
         parameters:
           target:
             description: "Target to diff against (file, commit, branch)"
@@ -483,7 +459,6 @@ toolsets:
             git-branch "-r" "/path/to/repo"
         execution:
           command: "cd <<repo_path>> && git branch <<options>> 2>/dev/null || echo 'Not a git repository or git command not found'"
-          uses_working_dir: true
         parameters:
           options:
             description: "Branch options (e.g., '-a' for all, '-r' for remote)"
@@ -505,7 +480,6 @@ toolsets:
             python-exec "import sys; print(sys.version)"
         execution:
           command: "python3 -c \"<<code>>\" 2>&1 || echo 'Error executing Python code'"
-          uses_working_dir: false
         parameters:
           code:
             description: "Python code to execute"
@@ -521,7 +495,6 @@ toolsets:
             node-exec "console.log(process.version)"
         execution:
           command: "node -e \"<<code>>\" 2>&1 || echo 'Error executing Node.js code or Node.js not installed'"
-          uses_working_dir: false
         parameters:
           code:
             description: "JavaScript code to execute"
@@ -533,7 +506,6 @@ toolsets:
           Generate a random UUID (Universally Unique Identifier).
         execution:
           command: "python3 -c \"import uuid; print(uuid.uuid4())\" 2>/dev/null || echo 'Error generating UUID'"
-          uses_working_dir: false
         parameters: {}
             
       generate-password:
@@ -546,7 +518,6 @@ toolsets:
             generate-password 20
         execution:
           command: "LC_ALL=C tr -dc 'A-Za-z0-9!@#$%^&*()_+-=' < /dev/urandom | head -c <<length>> || python3 -c \"import random,string; print(''.join(random.choice(string.ascii_letters + string.digits + '!@#$%^&*()_+-=') for _ in range(<<length>>)))\""
-          uses_working_dir: false
         parameters:
           length:
             description: "Length of the password to generate"
@@ -565,7 +536,6 @@ toolsets:
             date "+%Y-%m-%d"
         execution:
           command: "date <<format>> 2>/dev/null"
-          uses_working_dir: false
         parameters:
           format:
             description: "Format string (e.g., '+%Y-%m-%d')"
@@ -581,7 +551,6 @@ toolsets:
             cal "3" "2023"
         execution:
           command: "cal <<month>> <<year>> 2>/dev/null || echo 'Error displaying calendar'"
-          uses_working_dir: false
         parameters:
           month:
             description: "Month (1-12, optional)"
@@ -599,7 +568,6 @@ toolsets:
             echo "Hello, World!"
         execution:
           command: "echo \"<<text>>\""
-          uses_working_dir: false
         parameters:
           text:
             description: "Text to display"

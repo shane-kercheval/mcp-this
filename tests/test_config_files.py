@@ -129,29 +129,6 @@ class TestConfigurationFiles:
         # Validate the configuration (should not raise an exception)
         validate_config(config)
 
-    def test_config_with_uses_working_dir(self):
-        """Test configuration with uses_working_dir option."""
-        # Create a configuration with uses_working_dir option
-        config = {
-            "tools": {
-                "ls": {
-                    "description": "List files",
-                    "execution": {
-                        "command": "ls",
-                        "uses_working_dir": True,
-                    },
-                    "parameters": {
-                        "working_dir": {
-                            "description": "Working directory",
-                            "required": False,
-                        },
-                    },
-                },
-            },
-        }
-
-        # Validate the configuration (should not raise an exception)
-        validate_config(config)
 
     def test_combined_tools_and_config_validation(self):
         """Test combined validation of tools loaded from a config file."""

@@ -44,19 +44,6 @@ class TestCommandExecutionEdgeCases:
             # Should contain an error message
             assert "Error:" in result
 
-    @pytest.mark.asyncio
-    async def test_execute_working_dir_permission_denied(self):
-        """Test executing with a working directory that lacks permissions."""
-        # Create a temporary directory with restricted permissions
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Remove read permissions
-            os.chmod(temp_dir, stat.S_IWUSR)
-
-            # Try to execute in that directory
-            result = await execute_command("ls", temp_dir)
-
-            # Should contain a permissions error
-            assert "Error: Working directory is not readable" in result
 
     @pytest.mark.asyncio
     async def test_execute_command_not_in_path(self):
