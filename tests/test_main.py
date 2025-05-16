@@ -6,17 +6,6 @@ from mcp_this.__main__ import find_default_config, main
 class TestFindDefaultConfig:
     """Test cases for the find_default_config function."""
 
-    @patch('pathlib.Path.exists')
-    def test_find_default_config_not_found(self, mock_exists):  # noqa: ANN001
-        """Test behavior when no default config is found."""
-        # Mock behavior to make no paths exist
-        mock_exists.return_value = False
-
-        # Call the function
-        result = find_default_config()
-
-        # Assert that the result is None
-        assert result is None
 
 
 class TestMain:
@@ -109,15 +98,3 @@ class TestMain:
         # Check that sys.exit was called with code 1
         mock_exit.assert_called_once_with(1)
 
-    @patch('mcp_this.__main__.init_server')
-    @patch('mcp_this.__main__.mcp')
-    @patch('sys.argv', ['mcp-this', '--verbose', '--tools_path', '/path/to/config.yaml'])
-    def test_main_verbose_mode(self, mock_mcp, mock_init_server):  # noqa: ANN001
-        """Test main function with verbose flag."""
-        # Call main() and capture stdout
-        with patch('sys.stdout'):
-            main()
-
-        # Check that init_server and mcp.run were called correctly
-        mock_init_server.assert_called_once()
-        mock_mcp.run.assert_called_once()

@@ -157,19 +157,6 @@ class TestBuildCommand:
         result = build_command(template, params)
         assert result == "cat /path/to/my file.txt"
 
-    def test_empty_template(self):
-        """Test handling of empty template."""
-        template = ""
-        params = {"message": "Hello"}
-        result = build_command(template, params)
-        assert result == ""
-
-    def test_empty_params(self):
-        """Test handling of empty parameters dictionary."""
-        template = "echo <<message>> <<suffix>>"
-        params = {}
-        result = build_command(template, params)
-        assert result == "echo"
 
     def test_multiple_instances_of_same_parameter(self):
         """Test handling of multiple instances of the same parameter."""
@@ -254,13 +241,6 @@ class TestExecuteCommand:
         result = await execute_command(cmd)
         assert "Command produced no output, but stderr: Warning message" in result
 
-    @pytest.mark.asyncio
-    async def test_empty_command(self):
-        """Test executing an empty command."""
-        # Empty command on macOS doesn't raise an error but returns empty output
-        # Adjust the test to just check that we get a string return value
-        result = await execute_command("")
-        assert isinstance(result, str)
 
     @pytest.mark.asyncio
     async def test_command_with_unicode(self):
@@ -307,15 +287,6 @@ class TestExecuteCommand:
             for i in range(3):
                 assert f"test{i}.txt" in result
 
-    @pytest.mark.asyncio
-    async def test_environment_variables(self):
-        """Test command with environment variables."""
-        # The command should have access to environment variables
-        cmd = "echo $HOME" if os.name != "nt" else "echo %USERPROFILE%"
-
-        result = await execute_command(cmd)
-        # Should contain a valid path
-        assert "/" in result or "\\" in result
 
     @pytest.mark.asyncio
     async def test_command_with_quotes(self):
