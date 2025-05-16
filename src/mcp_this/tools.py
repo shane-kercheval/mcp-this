@@ -22,7 +22,7 @@ class ToolInfo:
     runtime_info: dict[str, any]  # Information needed by the generated function at runtime
     toolset_name: str = None  # Optional, could be None for top-level tools
 
-    def get_full_description(self) -> str:  # noqa: PLR0912, PLR0915
+    def get_full_description(self) -> str:
         """
         Build a comprehensive description optimized for LLM function calling.
 
@@ -64,18 +64,8 @@ class ToolInfo:
                 required = param_config.get("required", False)
                 req_status = "[REQUIRED]" if required else "[OPTIONAL]"
 
-                # Try to infer parameter type from name
-                param_type = ""
-                if "file" in param_name.lower() or "path" in param_name.lower():
-                    param_type = "(string, file path)"
-                elif "pattern" in param_name.lower() or "glob" in param_name.lower():
-                    param_type = "(string, glob pattern)"
-                elif "number" in param_name.lower() or "count" in param_name.lower() or "limit" in param_name.lower():  # noqa: E501
-                    param_type = "(integer)"
-                elif "enabled" in param_name.lower() or "flag" in param_name.lower():
-                    param_type = "(boolean)"
-                elif "url" in param_name.lower():
-                    param_type = "(string, URL)"
+                # All parameters are treated as strings for CLI commands
+                param_type = "(string)"
 
                 lines.append(f"- {param_name} {req_status}{' ' + param_type if param_type else ''}: {desc}")  # noqa: E501
 

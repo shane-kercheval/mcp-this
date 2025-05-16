@@ -824,8 +824,8 @@ class TestParseTools:
         assert "`echo Hello, <<name>>!`" in desc
         assert "Text like <<parameter_name>> (e.g." in desc
         assert "PARAMETERS:" in desc
-        assert "- name [OPTIONAL]: Your name" in desc
-        assert "- greeting [REQUIRED]: Greeting to use" in desc
+        assert "- name [OPTIONAL] (string): Your name" in desc
+        assert "- greeting [REQUIRED] (string): Greeting to use" in desc
         assert "EXAMPLE USAGE:" not in desc
 
     def test_get_full_description_with_working_dir(self):
@@ -895,8 +895,8 @@ class TestParseTools:
         assert "`find . -name \"<<pattern>>\" -type f | xargs grep \"<<content>>\"`" in desc
         assert "Text like <<parameter_name>> (e.g." in desc
         assert "PARAMETERS:" in desc
-        assert "- pattern [REQUIRED] (string, glob pattern): File pattern to search for" in desc
-        assert "- content [REQUIRED]: Content to find in files" in desc
+        assert "- pattern [REQUIRED] (string): File pattern to search for" in desc
+        assert "- content [REQUIRED] (string): Content to find in files" in desc
         assert "EXAMPLE USAGE:" not in desc
 
     def test_parameter_type_inference(self):
@@ -936,9 +936,8 @@ class TestParseTools:
         tool = result[0]
         desc = tool.get_full_description()
 
-        # Check for parameter type inference
-        assert "(string, file path)" in desc
-        assert "(string, glob pattern)" in desc
+        # Check for parameter type
+        assert "(string)" in desc
 
         # Check for placeholder example
         assert "Text like <<parameter_name>> (e.g." in desc
