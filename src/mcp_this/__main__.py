@@ -57,12 +57,6 @@ def main() -> None:
         default="stdio",
         help="Transport protocol to use (default: stdio)",
     )
-    parser.add_argument(
-        "--verbose",
-        "-v",
-        action="store_true",
-        help="Enable verbose logging",
-    )
     args = parser.parse_args()
 
     # Set config path or value from argument or look for default config
@@ -88,13 +82,6 @@ def main() -> None:
         print("  3. MCP_THIS_CONFIG_PATH environment variable")
         print("  4. Place default.yaml in the package configs directory")
         sys.exit(1)
-
-    if args.verbose:
-        if tools_path:
-            print(f"Starting MCP server with config path: {tools_path}")
-        elif tools:
-            print("Starting MCP server with config value from JSON string")
-        print(f"Using transport: {args.transport}")
 
     try:
         # Initialize the server with the configuration

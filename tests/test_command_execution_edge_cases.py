@@ -1,6 +1,5 @@
 """Edge case tests for command execution in mcp_this."""
 import os
-import stat
 import pytest
 import tempfile
 from pathlib import Path
