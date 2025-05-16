@@ -1,7 +1,7 @@
 """Unit tests for the __main__ module."""
 import os
 from unittest.mock import patch
-from mcp_this.__main__ import find_default_config, main
+from mcp_this.__main__ import main
 
 class TestFindDefaultConfig:
     """Test cases for the find_default_config function."""
