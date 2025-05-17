@@ -250,12 +250,12 @@ tools:
       
       Examples:
         - web_scraper(url="https://example.com")  # get basic text content
-        - web_scraper(url="https://example.com", dump_options="-width=100")  # wider output format
+        - web_scraper(url="https://docs.astral.sh/uv", dump_options="-width=100")  # wider output format
         - web_scraper(url="https://news.site.com", dump_options="-nolist")  # without link list
         - web_scraper(url="https://api.site.com/data.json", dump_options="-source")  # get source instead of rendered text
     execution:
       command: >-
-        lynx -dump -nomargins -width=80 <<dump_options>> '<<url>>'
+        lynx -dump -nomargins -hiddenlinks=ignore <<dump_options>> '<<url>>'
     parameters:
       url:
         description: URL of the webpage to fetch and convert to text
