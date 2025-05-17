@@ -2,7 +2,12 @@ tools:
   get-directory-tree:
     description: Generate a directory tree with standard exclusions and gitignore support
     execution:
-      command: tree '<<directory>>' -a --gitignore -I ".git|.claude|.env|.venv|env|node_modules|__pycache__|.DS_Store|*.pyc<<custom_excludes>>" <<format_args>>
+      command: >-
+        tree <<directory>>
+        -a
+        --gitignore
+        -I ".git|.claude|.env|.venv|env|node_modules|__pycache__|.DS_Store|*.pyc<<custom_excludes>>"
+        <<format_args>>
     parameters:
       directory:
         description: Directory to generate tree for
@@ -21,9 +26,9 @@ tools:
       Examples:
         - `find-files directory="/full/path/src" arguments="-name '*.py'"`
         - `find-files directory="/full/path/project" arguments="-mtime -7"`
-        - `find-files directory="/full/path/data" arguments="-size +1M"`
+        - `find-files directory="/full/path/data" arguments="-size +1M"
     execution:
-      command: find '<<directory>>' -type f <<arguments>> | sort
+      command: find <<directory>> -type f <<arguments>> | sort
     parameters:
       directory:
         description: Directory to search in
@@ -47,22 +52,4 @@ tools:
         required: true
       arguments:
         description: Additional grep arguments (e.g., directory/files to search, -i for case-insensitive, -A 3 for context, --include='*.py')
-        required: false
-
-  view-file:
-    description: |
-      Display contents of a file with optional line numbers, ranges, or highlighting
-      
-      Examples:
-        - `view-file file="/path/to/script.py"` (view entire file)
-        - `view-file file="/path/to/script.py" arguments="-n 10,20"` (view lines 10-20)
-        - `view-file file="/path/to/config.json" arguments="--json"` (pretty-print JSON)
-    execution:
-      command: cat '<<file>>' <<arguments>> | nl -ba
-    parameters:
-      file:
-        description: Path to the file to display
-        required: true
-      arguments:
-        description: Additional display options (e.g., -n 10,20 to show specific line range, --json to format JSON)
         required: false
