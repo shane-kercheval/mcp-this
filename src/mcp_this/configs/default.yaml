@@ -44,7 +44,7 @@ tools:
         description: Additional find arguments (e.g., "-name *.py -mtime -7 -not -path */venv/*")
         required: false
 
-  find-text:
+  find-text-patterns:
     description: |
       Find text patterns in files with optional context and filtering.
 
@@ -64,14 +64,14 @@ tools:
         description: Additional grep arguments (e.g., directory/files to search, "-i for case-insensitive, -A 3 for context, --include=*.py")
         required: false
 
-  view-file:
+  view-file-contents:
     description: |
-      Display contents of a file with optional line numbers, ranges, or highlighting
+      Display contents of a file with optional line numbers or filtering
       
       Examples:
         - view_file(file="/path/to/script.py")  # view entire file with line numbers
-        - view_file(file="/path/to/script.py", arguments="-n 10,20")  # view only lines 10-20
-        - view_file(file="/path/to/config.json", arguments="--json")  # pretty-print JSON file
+        - view_file(file="/path/to/script.py", arguments="| sed -n '10,20p'")  # view only lines 10-20
+        - view_file(file="/path/to/config.json", arguments="| python3 -m json.tool")  # pretty-print JSON file
         - view_file(file="/path/to/error.log", arguments="| grep ERROR")  # filter file to show only ERROR lines
     execution:
       command: >-
@@ -81,5 +81,5 @@ tools:
         description: Path to the file to display (quotes are handled automatically in the command)
         required: true
       arguments:
-        description: Additional display options (e.g., "-n 10,20 to show specific line range, --json to format JSON")
+        description: Additional processing options (e.g., "| sed -n '10,20p'" to show specific line range, "| python3 -m json.tool" to format JSON)
         required: false
