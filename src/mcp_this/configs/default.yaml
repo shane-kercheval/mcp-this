@@ -243,3 +243,23 @@ tools:
       path:
         description: Path where the directory should be created (parent directories will be created if needed)
         required: true
+
+  web-scraper:
+    description: |
+      Fetch a webpage and convert it to clean, readable text using lynx
+      
+      Examples:
+        - web_scraper(url="https://example.com")  # get basic text content
+        - web_scraper(url="https://example.com", dump_options="-width=100")  # wider output format
+        - web_scraper(url="https://news.site.com", dump_options="-nolist")  # without link list
+        - web_scraper(url="https://api.site.com/data.json", dump_options="-source")  # get source instead of rendered text
+    execution:
+      command: >-
+        lynx -dump -nomargins -width=80 <<dump_options>> '<<url>>'
+    parameters:
+      url:
+        description: URL of the webpage to fetch and convert to text
+        required: true
+      dump_options:
+        description: Additional lynx options (e.g., -width=100, -nolist, -source)
+        required: false
