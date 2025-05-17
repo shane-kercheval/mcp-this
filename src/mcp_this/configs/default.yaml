@@ -1,22 +1,27 @@
 tools:
   get-directory-tree:
-    description: Generate a directory tree with standard exclusions and gitignore support
+    description: |
+      Generate a directory tree with standard exclusions and gitignore support
+      
+      Examples:
+        - get_directory_tree(directory="/path/to/project")  # basic usage with default exclusions
+        - get_directory_tree(directory="/path/to/project", format_args="-L 3")  # limit depth to 3 levels
+        - get_directory_tree(directory="/home/user/code", custom_excludes="|dist|build", format_args="-C --dirsfirst")  # custom exclusions with colorized output and directories first
     execution:
       command: >-
-        tree <<directory>>
-        -a
-        --gitignore
+        tree '<<directory>>'
+        -a --gitignore
         -I ".git|.claude|.env|.venv|env|node_modules|__pycache__|.DS_Store|*.pyc<<custom_excludes>>"
         <<format_args>>
     parameters:
       directory:
-        description: Directory to generate tree for
+        description: Directory to generate tree for (quotes are handled automatically in the command)
         required: true
       custom_excludes:
-        description: Additional patterns to exclude (begin with | e.g., '|build|dist'). Probably not needed if there is a .gitignore file.
+        description: Additional patterns to exclude (begin with | e.g., "|build|dist"). Probably not needed if there is a .gitignore file.
         required: false
       format_args:
-        description: Additional formatting arguments (e.g., '-L 3 -C --dirsfirst')
+        description: Additional formatting arguments (e.g., "-L 3 -C --dirsfirst")
         required: false
 
   find-files:
@@ -24,17 +29,19 @@ tools:
       Locate files by name, pattern, type, size, date, or other criteria
       
       Examples:
-        - `find-files directory="/full/path/src" arguments="-name '*.py'"`
-        - `find-files directory="/full/path/project" arguments="-mtime -7"`
-        - `find-files directory="/full/path/data" arguments="-size +1M"
+        - find_files(directory="/full/path/src", arguments="-name *.py")  # find all Python files
+        - find_files(directory="/full/path/project", arguments="-mtime -7")  # find files modified in the last 7 days
+        - find_files(directory="/full/path/data", arguments="-size +1M")  # find files larger than 1 MB
+        - find_files(directory="/full/path/src", arguments="-name *.js -not -path */node_modules/*")  # find JS files excluding node_modules
     execution:
-      command: find <<directory>> -type f <<arguments>> | sort
+      command: >-
+        find '<<directory>>' -type f <<arguments>> | sort
     parameters:
       directory:
-        description: Directory to search in
+        description: Directory to search in (quotes are handled automatically in the command)
         required: true
       arguments:
-        description: Additional find arguments (e.g., -name "*.py" -mtime -7 -not -path "*/venv/*")
+        description: Additional find arguments (e.g., "-name *.py -mtime -7 -not -path */venv/*")
         required: false
 
   find-text:
@@ -42,14 +49,37 @@ tools:
       Find text patterns in files with optional context and filtering.
 
       Examples:
-        - `find-text pattern="function" arguments="/full/path/directory --include='*.js'"`
-        - `find-text pattern="TODO:" arguments="-i /full/path/src --include='*.py' --include='*.js' -B 2 -A 2"`
+        - find_text(pattern="function", arguments="/full/path/directory --include=*.js")  # find "function" in JS files
+        - find_text(pattern="TODO:", arguments="-i /full/path/src --include=*.py --include=*.js -B 2 -A 2")  # find TODOs case-insensitively with 2 lines of context before and after
+        - find_text(pattern="import.*pandas", arguments="/full/path/src --include=*.py")  # find pandas imports in Python files
+        - find_text(pattern="error", arguments="-i /full/path/logs -A 5")  # find errors case-insensitively with 5 lines after
     execution:
-      command: grep -r --color=never '<<pattern>>' <<arguments>>
+      command: >-
+        grep -r --color=never '<<pattern>>' <<arguments>>
     parameters:
       pattern:
-        description: Text pattern to search for (supports regex)
+        description: Text pattern to search for (supports regex, quotes are handled automatically in the command)
         required: true
       arguments:
-        description: Additional grep arguments (e.g., directory/files to search, -i for case-insensitive, -A 3 for context, --include='*.py')
+        description: Additional grep arguments (e.g., directory/files to search, "-i for case-insensitive, -A 3 for context, --include=*.py")
+        required: false
+
+  view-file:
+    description: |
+      Display contents of a file with optional line numbers, ranges, or highlighting
+      
+      Examples:
+        - view_file(file="/path/to/script.py")  # view entire file with line numbers
+        - view_file(file="/path/to/script.py", arguments="-n 10,20")  # view only lines 10-20
+        - view_file(file="/path/to/config.json", arguments="--json")  # pretty-print JSON file
+        - view_file(file="/path/to/error.log", arguments="| grep ERROR")  # filter file to show only ERROR lines
+    execution:
+      command: >-
+        cat '<<file>>' <<arguments>> | nl -ba
+    parameters:
+      file:
+        description: Path to the file to display (quotes are handled automatically in the command)
+        required: true
+      arguments:
+        description: Additional display options (e.g., "-n 10,20 to show specific line range, --json to format JSON")
         required: false
