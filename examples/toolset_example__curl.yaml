@@ -1,12 +1,9 @@
-toolsets:
-  web:
-    description: "Transfer data from or to a server"
-    tools:
-      curl:
-        description: "Make HTTP requests"
-        execution:
-          command: "curl <<arguments>>"
-        parameters:
-          arguments:
-            description: "Complete curl arguments including options and URL"
-            required: true
+tools:
+  curl:
+    description: "Make HTTP requests"
+    execution:
+      command: "curl <<arguments>>"
+    parameters:
+      arguments:
+        description: "Complete curl arguments including options and URL"
+        required: true

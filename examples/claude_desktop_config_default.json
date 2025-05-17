@@ -1,11 +1,11 @@
 {
   "mcpServers": {
     "mcp-this": {
-      "command": "uvx",
+      "command": "/Users/shanekercheval/.local/bin/uvx",
       "args": [
         "mcp-this",
         "--tools",
-        "{\"tools\": {\"find\": {\"description\": \"Find files using the find command\", \"execution\": {\"command\": \"find <<args>>\"}, \"parameters\": {\"args\": {\"description\": \"Full find command arguments\", \"required\": false}}}}}"
+        "{\"tools\": {\"extract-html-text\": {\"description\": \"Fetch a webpage and extract pure text, removing HTML tags\", \"execution\": {\"command\": \"curl -s <<url>> | sed '/<style/,/<\\\\/style>/d; /<script/,/<\\\\/script>/d' | sed 's/<[^>]*>//g' | grep -v '^$' | sed 's/^[[:space:]]*//' | sed '/^[[:space:]]*$/d' | sed -e ':a' -e 'N' -e '$!ba' -e 's/\\\\n\\\\n\\\\n*/\\\\n\\\\n/g'\"}, \"parameters\": {\"url\": {\"description\": \"URL of the webpage to fetch\", \"required\": true}}}, \"extract-html-links\": {\"description\": \"Fetch a webpage and extract all links with their text\", \"execution\": {\"command\": \"curl -s <<url>> | grep -o '<a [^>]*>.*</a>' | sed 's/<a [^>]*href=\\\"\\\\([^\\\"]*\\\\)\\\"[^>]*>\\\\(.*\\\\)<\\\\/a>/\\\\2 (\\\\1)/'\"}, \"parameters\": {\"url\": {\"description\": \"URL of the webpage to fetch\", \"required\": true}}}}}"
       ]
     }
   }
