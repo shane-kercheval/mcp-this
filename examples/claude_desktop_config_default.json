@@ -10,3 +10,16 @@
     }
   }
 }
+
+{
+  "mcpServers": {
+    "mcp-this": {
+      "command": "/Users/shanekercheval/.local/bin/uvx",
+      "args": [
+        "mcp-this",
+        "--tools-path",
+        "/Users/shanekercheval/repos/mcp-this/src/mcp_this/configs/default.yaml"
+      ]
+    }
+  }
+}
