@@ -130,7 +130,7 @@ tools:
         description: Comma-separated list of information types to extract (functions, classes, imports, todos)
         required: true
 
-edit-file:
+  edit-file:
     description: |
       Modify a file with precise control - insert, replace, or delete content
       
@@ -199,3 +199,47 @@ edit-file:
       end_line:
         description: Ending line number (only for replace_range operation)
         required: false
+
+  create-file:
+    description: |
+      Create a new file with specified content
+      
+      Examples:
+        - create_file(path="/path/to/new_file.py", content="def main():\n    print('Hello world')\n\nif __name__ == '__main__':\n    main()")  # create a Python script
+        - create_file(path="/path/to/config.json", content="{\n  \"name\": \"project\",\n  \"version\": \"1.0.0\"\n}")  # create a JSON config file
+        - create_file(path="/path/to/.gitignore", content="node_modules/\n*.log\n.DS_Store")  # create a gitignore file
+    execution:
+      command: >-
+        if [ -f "<<path>>" ]; then
+          echo "Error: File '<<path>>' already exists. Use edit-file tool to modify existing files.";
+          exit 1;
+        else
+          mkdir -p "$(dirname "<<path>>")" &&
+          echo '<<content>>' > "<<path>>" &&
+          echo "File created successfully: <<path>>" &&
+          ls -la "<<path>>";
+        fi
+    parameters:
+      path:
+        description: Path where the file should be created (parent directories will be created if needed)
+        required: true
+      content:
+        description: Content to write to the file
+        required: true
+
+  create-directory:
+    description: |
+      Create a new directory or directory structure
+      
+      Examples:
+        - create_directory(path="/path/to/new_directory")  # create a single directory
+        - create_directory(path="/path/to/nested/directory/structure")  # create nested directories
+    execution:
+      command: >-
+        mkdir -p "<<path>>" &&
+        echo "Directory created successfully: <<path>>" &&
+        ls -la "<<path>>"
+    parameters:
+      path:
+        description: Path where the directory should be created (parent directories will be created if needed)
+        required: true
