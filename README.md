@@ -157,7 +157,7 @@ When the tool is invoked, these placeholders are replaced with the actual parame
 
 ## 🔌 Claude Desktop Integration
 
-### Using npx and uvx (Recommended)
+### Using uvx (Recommended)
 
 The simplest way to configure Claude Desktop is to use `npx` and `uvx` to install and run `mcp-this` on demand:
 
@@ -165,17 +165,12 @@ The simplest way to configure Claude Desktop is to use `npx` and `uvx` to instal
 {
   "mcpServers": {
     "mcp-this": {
-      "command": "npx",
+      "command": "uvx",
       "args": [
-        "-y",
-        "uvx",
         "mcp-this",
-        "--tools-path",
-        "/path/to/your/config.yaml"
+        // "--tools", "{\"tools\": <json string defining tools>}"
+        "--tools-path", "/path/to/your/config.yaml"
       ],
-      "env": {
-        "SOME_API_KEY": "your-secret-key"
-      }
     }
   }
 }
@@ -185,25 +180,6 @@ This approach:
 - Automatically installs the latest version from PyPI when needed
 - Doesn't require manual installation or updates
 - Cleanly isolates dependencies
-
-### Using the default configuration
-
-If you want to use the default configuration that comes with the package:
-
-```json
-{
-  "mcpServers": {
-    "mcp-this": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "uvx",
-        "mcp-this"
-      ]
-    }
-  }
-}
-```
 
 ### Using a locally installed package
 
@@ -215,9 +191,6 @@ If you've installed `mcp-this` globally or in your environment:
     "mcp-this": {
       "command": "mcp-this",
       "args": ["--tools-path", "/path/to/your/config.yaml"],
-      "env": {
-        "SOME_API_KEY": "your-secret-key"
-      }
     }
   }
 }
