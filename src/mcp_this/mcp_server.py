@@ -20,7 +20,8 @@ def get_default_tools_path() -> Path | None:
     """Get the path to the default configuration file."""
     # Look for default config in package directory
     package_dir = Path(__file__).parent
-    default_config = package_dir / "config" / "default.yaml"
+    # Correct path where the file is stored
+    default_config = package_dir / "configs" / "default.yaml"
     if default_config.exists():
         return default_config
     return None

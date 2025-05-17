@@ -26,7 +26,7 @@ class TestGetDefaultToolsPath:
 
         # Assert the result is not None and ends with the expected path
         assert result is not None
-        assert str(result).endswith(os.path.join("config", "default.yaml"))
+        assert str(result).endswith(os.path.join("configs", "default.yaml"))
 
     @patch("pathlib.Path.exists")
     def test_default_path_not_exists(self, mock_exists: MagicMock) -> None:
@@ -143,24 +143,31 @@ class TestLoadConfig:
         mock_file.assert_called_once_with(Path("/env/path/config.yaml"))
 
     @patch.dict(os.environ, {}, clear=True)  # Clear environment variables
-    @patch("mcp_this.mcp_server.get_default_tools_path")
-    @patch("pathlib.Path.is_file")
-    @patch("builtins.open", new_callable=mock_open,
-           read_data="tools:\n  test:\n    execution:\n      command: echo test")
-    def test_load_config_from_default(self, mock_file: MagicMock, mock_is_file: MagicMock,
-                                     mock_get_default: MagicMock) -> None:
-        """Test loading configuration from default path."""
-        # Setup the mocks
-        mock_get_default.return_value = Path("/default/config.yaml")
-        mock_is_file.return_value = True
+    def test_load_config_from_default_real_file(self) -> None:
+        """Test loading configuration from actual default config file."""
+        import yaml
+        from pathlib import Path
 
-        # Call the function without specifying tools_path or tools
-        result = load_config()
+        # Find the actual default.yaml in the package
+        package_dir = Path(__file__).parent.parent / "src" / "mcp_this"
+        default_config_path = package_dir / "configs" / "default.yaml"
 
-        # Assert the result is correct
-        assert result == {"tools": {"test": {"execution": {"command": "echo test"}}}}
-        # Assert the file was opened correctly
-        mock_file.assert_called_once_with(Path("/default/config.yaml"))
+        # Skip if the file doesn't exist
+        if not default_config_path.exists():
+            pytest.skip("Default configuration file not found")
+
+        # Temporarily patch get_default_tools_path to return our known path
+        with patch("mcp_this.mcp_server.get_default_tools_path", return_value=default_config_path):
+            # Call the function without specifying tools_path or tools
+            result = load_config()
+
+            # Load the same file directly to compare
+            with open(default_config_path) as f:
+                expected = yaml.safe_load(f)
+
+            # Compare the results
+            assert result == expected
+            assert "tools" in result, "Default config should contain tools section"
 
     @patch.dict(os.environ, {}, clear=True)  # Clear environment variables
     @patch("mcp_this.mcp_server.get_default_tools_path")

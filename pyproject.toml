@@ -44,6 +44,7 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mcp_this"]
+include = ["src/mcp_this/configs/*.yaml"]
 
 [build-system]
 requires = ["hatchling>=1.17.1"]

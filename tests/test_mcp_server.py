@@ -83,6 +83,19 @@ class TestMCPServer:
             if 'required' in example_tool.inputSchema:
                 assert 'name' not in example_tool.inputSchema['required']
 
+    @pytest.mark.asyncio
+    async def test_server_with_default_tools(self):
+        """Test that the server starts with default tools."""
+        server_params = StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_this"],
+        )
+        async with stdio_client(server_params) as (read, write), ClientSession(read, write) as session:  # noqa: E501
+            await session.initialize()
+            tools = await session.list_tools()
+            assert tools.tools
+            assert 'get-directory-tree' in [tool.name for tool in tools.tools]
+
 
 class TestBuildCommand:
     """Test cases for the build_command function."""

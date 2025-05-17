@@ -59,7 +59,6 @@ class TestConfigurationFiles:
         package_dir = Path(__file__).parent.parent / "src" / "mcp_this"
         default_config_paths = [
             package_dir / "configs" / "default.yaml",
-            package_dir / "config" / "default.yaml",
         ]
 
         # Find the first existing default config file

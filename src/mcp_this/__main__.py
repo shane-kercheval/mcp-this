@@ -25,7 +25,6 @@ def find_default_config() -> str | None:
     package_dir = pathlib.Path(__file__).parent
     locations = [
         package_dir / "configs" / "default.yaml",
-        package_dir / "config" / "default.yaml",
         pathlib.Path.home() / ".config" / "mcp-this" / "config.yaml",
         pathlib.Path("/etc/mcp-this/config.yaml"),
     ]
