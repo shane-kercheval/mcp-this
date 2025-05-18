@@ -699,7 +699,7 @@ class TestFindTextPatterns:
             f.write("This file has multiple apple mentions.\nHere is another apple on a new line.")
 
         with open(test_file3, "w") as f:  # noqa: ASYNC230
-            f.write("def test_function():\n    # This is a Python file with apple mentioned\n    return 'apple'")
+            f.write("def test_function():\n    # This is a Python file with apple mentioned\n    return 'apple'")  # noqa: E501
 
         async with stdio_client(server_params) as (read, write), ClientSession(
             read, write,
@@ -1220,7 +1220,7 @@ INFO: Shutdown initiated""")
 
             # The formatted output should be longer than the original
             # since it adds spaces and newlines
-            assert len(result_text) > len('{"name":"Test","values":[1,2,3],"nested":{"key":"value"}}')
+            assert len(result_text) > len('{"name":"Test","values":[1,2,3],"nested":{"key":"value"}}')  # noqa: E501
 
     async def test_non_existent_file(
         self,
@@ -1712,12 +1712,12 @@ class TestCreateFile:
             result_text = result.content[0].text
 
             # Check that the call was successful
-            assert "File created successfully" in result_text or "created successfully" in result_text
+            assert "File created successfully" in result_text or "created successfully" in result_text  # noqa: E501
 
             # Verify the file exists
             assert os.path.exists(test_file)
             # Read file and strip any trailing whitespace/newlines for comparison
-            with open(test_file) as f:
+            with open(test_file) as f:  # noqa: ASYNC230
                 content = f.read().strip()
                 assert content == file_content.strip()
 
@@ -1751,13 +1751,13 @@ class TestCreateFile:
             result_text = result.content[0].text
 
             # Check that the call was successful
-            assert "File created successfully" in result_text or "created successfully" in result_text
+            assert "File created successfully" in result_text or "created successfully" in result_text  # noqa: E501
 
             # Verify the directory and file exist
             assert os.path.exists(nested_dir)
             assert os.path.exists(test_file)
             # Read file and strip any trailing whitespace/newlines for comparison
-            with open(test_file) as f:
+            with open(test_file) as f:  # noqa: ASYNC230
                 content = f.read().strip()
                 assert content == file_content.strip()
 
@@ -1795,7 +1795,7 @@ class TestCreateFile:
             assert "already exists" in result_text or "Error" in result_text
 
             # Verify the file still has the original content
-            with open(existing_file) as f:
+            with open(existing_file) as f:  # noqa: ASYNC230
                 content = f.read()
                 assert content == "Original content"
 
@@ -1856,7 +1856,7 @@ class TestCreateDirectory:
             result_text = result.content[0].text
 
             # Check that the call was successful
-            assert "Directory created successfully" in result_text or "created successfully" in result_text
+            assert "Directory created successfully" in result_text or "created successfully" in result_text  # noqa: E501
 
             # Verify the directory exists
             assert os.path.exists(test_dir)
@@ -1889,7 +1889,7 @@ class TestCreateDirectory:
             result_text = result.content[0].text
 
             # Check that the call was successful
-            assert "Directory created successfully" in result_text or "created successfully" in result_text
+            assert "Directory created successfully" in result_text or "created successfully" in result_text  # noqa: E501
 
             # Verify the directory exists
             assert os.path.exists(nested_dir)
@@ -1933,7 +1933,7 @@ class TestCreateDirectory:
             result_text = result.content[0].text
 
             # The operation should succeed (mkdir -p is idempotent)
-            assert "Directory created successfully" in result_text or "created successfully" in result_text
+            assert "Directory created successfully" in result_text or "created successfully" in result_text  # noqa: E501
 
             # The marker file should still exist
             assert os.path.exists(marker_file)
