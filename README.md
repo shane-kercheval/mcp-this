@@ -79,6 +79,8 @@ If the file above was saved to `/path/to/your/custom_tools.yaml`, the correspond
 }
 ```
 
+---
+
 ## Quick Start
 
 ### `uvx`
@@ -230,6 +232,8 @@ You can also pass a JSON string containing tool definitions directly:
 }
 ```
 
+---
+
 ## Configuration Format
 
 Configuration can be provided as either a YAML file or a JSON string. The format supports both top-level tools and organized toolsets.
@@ -264,6 +268,8 @@ Each tool requires the following configuration:
 
 Parameters are specified in the form `<<parameter_name>>` in the command template and will be replaced with the actual parameter values when executed.
 
+---
+
 ## Default Tools
 
 The default configuration includes these powerful CLI tools:
@@ -289,6 +295,8 @@ For the default tools to work correctly, install the following dependencies:
 brew install tree  # Required for get-directory-tree
 brew install lynx  # Required for web-scraper
 ```
+
+---
 
 ## Usage Examples
 
