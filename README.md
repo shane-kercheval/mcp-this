@@ -4,20 +4,20 @@
 
 `mcp-this` is a MCP Server that creates tools dynamically from configuration files, allowing MCP Clients (e.g. Claude Desktop) to execute CLI commands without writing any code. Simply define which commands should be exposed as tools, along with their parameters and execution details, in a YAML or JSON format.
 
-## ✨ Features
+## Features
 
 - **Dynamically create MCP tools** from YAML configuration files
 - **Define command-line tools** with parameters and execution details
 - **Default configuration** with common utility tools ready to use
 - **JSON configuration support** for programmatic use
 
-## 🚀 Quick Start
+## Quick Start
 
 The simplest way to use the server is via `uvx`. This command lets you run Python tools without installing them globally. It creates a temporary environment just for that tool, runs it, and then cleans up.
 
 > **Note:** Examples below require installation of `uvx` - instructions can be found at [https://docs.astral.sh/uv/](https://docs.astral.sh/uv/).
 
-## 🖥️ Claude Desktop Integration
+## Claude Desktop Integration
 
 ### Setting Up MCP-This with Claude Desktop
 
@@ -152,7 +152,7 @@ You can also pass a JSON string containing tool definitions directly:
 }
 ```
 
-## 📋 Configuration Format
+## Configuration Format
 
 Configuration can be provided as either a YAML file or a JSON string. The format supports both top-level tools and organized toolsets.
 
@@ -197,7 +197,7 @@ Each tool requires the following configuration:
 
 Parameters are specified in the form `<<parameter_name>>` in the command template and will be replaced with the actual parameter values when executed.
 
-## 🧰 Default Tools
+## Default Tools
 
 The default configuration includes these powerful CLI tools:
 
@@ -223,7 +223,7 @@ brew install tree  # Required for get-directory-tree
 brew install lynx  # Required for web-scraper
 ```
 
-## 💻 Usage Examples
+## Usage Examples
 
 ### Python Client API
 
@@ -297,7 +297,7 @@ async with stdio_client(server_params) as (read, write):
         print(result.content[0].text)
 ```
 
-## ⚙️ Configuration Methods
+## Configuration Methods
 
 You can provide configuration in several ways:
 
@@ -308,7 +308,7 @@ You can provide configuration in several ways:
 | **Environment Variable** | `MCP_THIS_CONFIG_PATH=/path/to/config.yaml` |
 | **Default Config** | If no configuration is provided, the default tools are used |
 
-## 🛠️ Development
+## Development
 
 ### Setup Development Environment
 
@@ -357,6 +357,6 @@ uv add <package>
 uv add <package> --group dev
 ```
 
-## 📜 License
+## License
 
 [Apache License 2.0](LICENSE)
