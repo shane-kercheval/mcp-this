@@ -28,6 +28,8 @@ The simplest way to use the server is via `uvx`. `uvx` is a command that lets yo
 - If neither are provided, the tools defined in `./src/mcp_this/configs/default.yaml` are used, which are:
     - TODO: list default tools with brief descriptions
 
+    - Optionally install dependencies if you want to use the tools (see notes below)
+
 The simplest way to get started is to use default tools and replace/modify contents of `claude_desktop_config.json` with:
 
 ```json
@@ -145,44 +147,7 @@ You can also pass a JSON string containing the tool definitions directly to the 
       "args": [
         "mcp-this",
         "--tools",
-        '{"tools":{"current-time":{"description":"Display the current date and time in various formats.\n\nExamples:\n- current_time(format=\"iso\")  # ISO format (2023-05-18T14:30:45)\n- current_time(format=\"readable\")  # Human readable (Thursday, May 18, 2023 2:30 PM)\n- current_time(format=\"unix\")  # Unix timestamp (1684421445)\n\nIf no format is specified, all formats will be displayed.","execution":{"command":"if [ \"<<format>>\" = \"iso\" ]; then date -u +\"%Y-%m-%dT%H:%M:%SZ\"; elif [ \"<<format>>\" = \"readable\" ]; then date \"+%A, %B %d, %Y %I:%M %p\"; elif [ \"<<format>>\" = \"unix\" ]; then date +%s; else echo \"ISO: $(date -u +\"%Y-%m-%dT%H:%M:%SZ\")\"; echo \"Readable: $(date \"+%A, %B %d, %Y %I:%M %p\")\"; echo \"Unix timestamp: $(date +%s)\"; fi"},"parameters":{"format":{"description":"Time format to display (iso, readable, unix, or leave empty for all formats)","required":false}}}}}'
-    }
-  }
-}
-```
-
-
-### Using the Default Tools
-
-```
-
-### Using Custom Tools
-
-```bash
-# Using a custom configuration file
-uvx mcp-this --tools_path ./my_config.yaml
-
-# Using the MCP framework with a custom configuration
-mcp dev -m mcp_this --tools_path ./my_config.yaml
-```
-
-### Using with Claude Desktop
-
-Add to your Claude Desktop configuration:
-
-```json
-{
-  "mcpServers": {
-    "mcp-this-default": {
-      "command": "uvx",
-      "args": ["mcp-this"]
-    },
-    "mcp-this-custom": {
-      "command": "uvx",
-      "args": [
-        "mcp-this",
-        "--tools_path",
-        "./my_config.yaml"
+        "{\"tools\":{\"current-time\":{\"description\":\"Display the current date and time in various formats.\\n\\nExamples:\\n- current_time(format=\\\"iso\\\")  # ISO format (2023-05-18T14:30:45)\\n- current_time(format=\\\"readable\\\")  # Human readable (Thursday, May 18, 2023 2:30 PM)\\n- current_time(format=\\\"unix\\\")  # Unix timestamp (1684421445)\\n\\nIf no format is specified, all formats will be displayed.\",\"execution\":{\"command\":\"if [ \\\"<<format>>\\\" = \\\"iso\\\" ]; then date -u +\\\"%Y-%m-%dT%H:%M:%SZ\\\"; elif [ \\\"<<format>>\\\" = \\\"readable\\\" ]; then date \\\"+%A, %B %d, %Y %I:%M %p\\\"; elif [ \\\"<<format>>\\\" = \\\"unix\\\" ]; then date +%s; else echo \\\"ISO: $(date -u +\\\"%Y-%m-%dT%H:%M:%SZ\\\")\\\"; echo \\\"Readable: $(date \\\"+%A, %B %d, %Y %I:%M %p\\\")\\\"; echo \\\"Unix timestamp: $(date +%s)\\\"; fi\"},\"parameters\":{\"format\":{\"description\":\"Time format to display (iso, readable, unix, or leave empty for all formats)\",\"required\":false}}}}}"
       ]
     }
   }
