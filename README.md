@@ -1,4 +1,4 @@
-# MCP-This
+# `mcp-this`
 
 > An MCP Server that dynamically exposes CLI/bash commands as tools through YAML configuration files.
 
