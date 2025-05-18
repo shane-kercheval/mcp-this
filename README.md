@@ -12,36 +12,140 @@
 - Support for JSON configuration string for programmatic use
 - Compatible with Claude Desktop and Claude MCP API
 
-## Installation
+# Quick Start
 
-```bash
-# Install using uv (recommended)
-uv install mcp-this
+The simplest way to use the server is via `uvx`. `uvx` is a command that lets you run Python tools without installing them globally. It creates a temporary environment just for that tool, runs it, and then cleans up. Examples below require installation of `uvx` - instructions can be found here [https://docs.astral.sh/uv/](https://docs.astral.sh/uv/).
 
-# Or with pip
-pip install mcp-this
+## Claude Desktop
+
+- Start Claude Desktop
+- Navigate to `Settings->Developer`; click "Edit Config"
+- Open `claude_desktop_config.json` in your editor of choice
+
+### Using Default Tools
+
+- The MCP Server can be configured to use custom tools defined in a yaml file via the `--tools_path` command or it can be given a single json string via `--tools`. 
+- If neither are provided, the tools defined in `./src/mcp_this/configs/default.yaml` are used, which are:
+    - TODO: list default tools with brief descriptions
+
+The simplest way to get started is to use default tools and replace/modify contents of `claude_desktop_config.json` with:
+
+```json
+{
+  "mcpServers": {
+    "mcp-this-default": {
+      "command": "uvx",
+      "args": ["mcp-this"]
+    }
+  }
+}
 ```
 
-## Quick Start
+Then when you restart Claude you should see `mcp-this-default` mcp server:
+
+![Claude Desktop showing mcp-this-default server](./documentation/images/server-default.png)
+
+If you see a `spawn uvx: ENOENT` or similar message it could mean:
+- you don't have `uvx` installed (see note above)
+- `uvx` is installed but not in the `PATH`
+    - add it to your `PATH` or use use the full path e.g. `/Users/<username>/.local/bin/uvx`
+
+
+### Example Passing Yaml that Defines Tools
+
+As mentioned above, the MCP Server can be configured to use custom tools defined in a yaml file via the `--tools_path` command.
+
+- Create a file called `custom_tools.yaml` with these contents:
+
+```yaml
+tools:
+  get-current-time:
+    description: |
+      Display the current date and time in various formats.
+      
+      Examples:
+      - get_current_time(format="iso")
+      - get_current_time(format="readable")
+      - get_current_time(format="unix")
+
+      If no format is specified, all formats will be displayed.
+    execution:
+      command: >-
+        if [ "<<format>>" = "iso" ]; then 
+          date -u +"%Y-%m-%dT%H:%M:%SZ"; 
+        elif [ "<<format>>" = "readable" ]; then 
+          date "+%A, %B %d, %Y %I:%M %p"; 
+        elif [ "<<format>>" = "unix" ]; then 
+          date +%s; 
+        else 
+          echo "ISO: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"; 
+          echo "Readable: $(date "+%A, %B %d, %Y %I:%M %p")"; 
+          echo "Unix timestamp: $(date +%s)"; 
+        fi
+    parameters:
+      format:
+        description: "Time format to display (iso, readable, unix, or leave empty for all formats)"
+        required: false
+```
+
+> This tool will print out the current date/time e.g. `format=iso` will give `2025-05-18T17:17:39`.
+
+- Replace/modify contents of `claude_desktop_config.json` with:
+    - This will start two `mcp-this` servers, `mcp-this-default` and `mcp-this-custom`
+        - `mcp-this-default`: This server does not specify any tools and will load the default tools described in the example above.
+        - `mcp-this-custom`: This server defines a tool called `get-current-time`.
+
+```json
+{
+  "mcpServers": {
+    "mcp-this-default": {
+      "command": "uvx",
+      "args": ["mcp-this"]
+    },
+    "mcp-this-custom": {
+      "command": "uvx",
+      "args": [
+        "mcp-this",
+        "--tools_path", "/path/to/your/custom_tools.yaml"
+      ]
+    }
+  }
+}
+```
+
+### Example Passing Tools as JSON string
+
+```json
+{
+  "mcpServers": {
+    "mcp-this-default": {
+      "command": "uvx",
+      "args": ["mcp-this"]
+    },
+    "mcp-this-custom": {
+      "command": "uvx",
+      "args": [
+        "mcp-this",
+        "--tools",
+        '{"tools":{"current-time":{"description":"Display the current date and time in various formats.\n\nExamples:\n- current_time(format=\"iso\")  # ISO format (2023-05-18T14:30:45)\n- current_time(format=\"readable\")  # Human readable (Thursday, May 18, 2023 2:30 PM)\n- current_time(format=\"unix\")  # Unix timestamp (1684421445)\n\nIf no format is specified, all formats will be displayed.","execution":{"command":"if [ \"<<format>>\" = \"iso\" ]; then date -u +\"%Y-%m-%dT%H:%M:%SZ\"; elif [ \"<<format>>\" = \"readable\" ]; then date \"+%A, %B %d, %Y %I:%M %p\"; elif [ \"<<format>>\" = \"unix\" ]; then date +%s; else echo \"ISO: $(date -u +\"%Y-%m-%dT%H:%M:%SZ\")\"; echo \"Readable: $(date \"+%A, %B %d, %Y %I:%M %p\")\"; echo \"Unix timestamp: $(date +%s)\"; fi"},"parameters":{"format":{"description":"Time format to display (iso, readable, unix, or leave empty for all formats)","required":false}}}}}'
+    }
+  }
+}
+```
+
 
 ### Using the Default Tools
 
-```bash
-# Start the MCP server with default tools
-uvx mcp-this
-
-# Or using the MCP framework
-mcp dev -m mcp_this
 ```
 
 ### Using Custom Tools
 
 ```bash
 # Using a custom configuration file
-uvx mcp-this --config_path ./my_config.yaml
+uvx mcp-this --tools_path ./my_config.yaml
 
 # Using the MCP framework with a custom configuration
-mcp dev -m mcp_this --config_path ./my_config.yaml
+mcp dev -m mcp_this --tools_path ./my_config.yaml
 ```
 
 ### Using with Claude Desktop
@@ -59,7 +163,7 @@ Add to your Claude Desktop configuration:
       "command": "uvx",
       "args": [
         "mcp-this",
-        "--config_path",
+        "--tools_path",
         "./my_config.yaml"
       ]
     }
@@ -215,7 +319,7 @@ async with stdio_client(server_params) as (read, write):
 
 You can provide configuration in several ways:
 
-1. **Config File Path**: `--config_path /path/to/config.yaml`
+1. **Config File Path**: `--tools_path /path/to/config.yaml`
 2. **Config Value String**: `--config_value '{"tools": {...}}'`
 3. **Environment Variable**: `MCP_THIS_CONFIG_PATH=/path/to/config.yaml`
 4. **Default Config**: If no configuration is provided, the default configuration is used
