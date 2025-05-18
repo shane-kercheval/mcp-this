@@ -4,6 +4,7 @@ import tempfile
 import os
 import shutil
 import re
+import time
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
@@ -380,3 +381,267 @@ class TestGetDirectoryTree:
         finally:
             # Clean up
             shutil.rmtree(empty_dir)
+
+
+@pytest.mark.asyncio
+class TestFindFiles:
+    """Test the find-files tool from the default configuration."""
+
+    async def test_tool_registration(
+        self,
+        server_params: StdioServerParameters,
+    ):
+        """Test that the find-files tool is properly registered."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+            tools = await session.list_tools()
+
+            # Verify tool exists
+            tool_names = [t.name for t in tools.tools]
+            assert "find-files" in tool_names
+
+            # Get the tool details
+            find_files_tool = next(t for t in tools.tools if t.name == "find-files")
+
+            # Check tool schema has the expected parameters
+            assert "directory" in find_files_tool.inputSchema["properties"]
+            assert "arguments" in find_files_tool.inputSchema["properties"]
+
+            # Verify only 'directory' is required
+            assert "required" in find_files_tool.inputSchema
+            assert "directory" in find_files_tool.inputSchema["required"]
+            assert "arguments" not in find_files_tool.inputSchema["required"]
+
+    async def test_basic_file_finding(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the find-files tool with basic usage."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with the test directory to find all files
+            result = await session.call_tool(
+                "find-files",
+                {"directory": temp_test_directory},
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that the result contains expected files
+            assert "file1.txt" in result_text
+            assert "file2.py" in result_text
+            assert "subfolder1/file3.txt" in result_text
+            assert "subfolder1/file4.py" in result_text
+
+            # Check that hidden files are also found
+            assert ".hidden_file" in result_text
+
+    async def test_find_by_extension(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the find-files tool with specific file extension filter."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to find only Python files
+            result = await session.call_tool(
+                "find-files",
+                {
+                    "directory": temp_test_directory,
+                    "arguments": "-name '*.py'",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that only Python files are found
+            assert "file2.py" in result_text
+            assert "subfolder1/file4.py" in result_text
+
+            # Check that non-Python files are not in the results
+            assert "file1.txt" not in result_text
+            assert "subfolder1/file3.txt" not in result_text
+            assert ".hidden_file" not in result_text
+
+    async def test_find_newer_files(
+        self,
+        server_params: StdioServerParameters,
+    ):
+        """Test the find-files tool with timestamp filter."""
+        # Create a temporary directory
+        temp_dir = tempfile.mkdtemp()
+        try:
+            # Create an old file (modify time set to 2 days ago)
+            old_file = os.path.join(temp_dir, "old_file.txt")
+            with open(old_file, "w") as f:  # noqa: ASYNC230
+                f.write("Old content")
+
+            # Set its modification time to 2 days ago
+            old_time = time.time() - (2 * 24 * 60 * 60)
+            os.utime(old_file, (old_time, old_time))
+
+            # Create a new file
+            new_file = os.path.join(temp_dir, "new_file.txt")
+            with open(new_file, "w") as f:  # noqa: ASYNC230
+                f.write("New content")
+
+            async with stdio_client(server_params) as (read, write), ClientSession(
+                read, write,
+            ) as session:
+                await session.initialize()
+
+                # Call the tool to find files newer than 1 day
+                result = await session.call_tool(
+                    "find-files",
+                    {
+                        "directory": temp_dir,
+                        "arguments": "-mtime -1",
+                    },
+                )
+
+                # Verify we got some output
+                assert result.content
+                result_text = result.content[0].text
+
+                # Check that only the new file is found
+                assert "new_file.txt" in result_text
+                assert "old_file.txt" not in result_text
+        finally:
+            # Clean up
+            shutil.rmtree(temp_dir)
+
+    async def test_find_by_size(
+        self,
+        server_params: StdioServerParameters,
+    ):
+        """Test the find-files tool with size filter."""
+        # Create a temporary directory
+        temp_dir = tempfile.mkdtemp()
+        try:
+            # Create a small file (less than 10 bytes)
+            small_file = os.path.join(temp_dir, "small_file.txt")
+            with open(small_file, "w") as f:  # noqa: ASYNC230
+                f.write("Small")
+
+            # Create a larger file (more than 10 bytes)
+            large_file = os.path.join(temp_dir, "large_file.txt")
+            with open(large_file, "w") as f:  # noqa: ASYNC230
+                f.write("This is a larger file with more than 10 bytes of content")
+
+            async with stdio_client(server_params) as (read, write), ClientSession(
+                read, write,
+            ) as session:
+                await session.initialize()
+
+                # Call the tool to find files larger than 10 bytes
+                result = await session.call_tool(
+                    "find-files",
+                    {
+                        "directory": temp_dir,
+                        "arguments": "-size +10c",
+                    },
+                )
+
+                # Verify we got some output
+                assert result.content
+                result_text = result.content[0].text
+
+                # Check that only the large file is found
+                assert "large_file.txt" in result_text
+                assert "small_file.txt" not in result_text
+        finally:
+            # Clean up
+            shutil.rmtree(temp_dir)
+
+    async def test_complex_find_arguments(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the find-files tool with complex arguments combining multiple conditions."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with complex arguments
+            # (Python files not in subfolder1)
+            result = await session.call_tool(
+                "find-files",
+                {
+                    "directory": temp_test_directory,
+                    "arguments": "-name '*.py' -not -path '*/subfolder1/*'",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that only Python files not in subfolder1 are found
+            assert "file2.py" in result_text
+            assert "subfolder1/file4.py" not in result_text
+
+    async def test_non_existent_directory(
+        self,
+        server_params: StdioServerParameters,
+    ):
+        """Test the find-files tool with a non-existent directory."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with a non-existent directory
+            result = await session.call_tool(
+                "find-files",
+                {"directory": "/path/that/doesnt/exist"},
+            )
+
+            # Verify we get some content (likely an error message)
+            assert result.content
+            result_text = result.content[0].text
+
+            # Just check that we received some output
+            assert len(result_text) > 0
+
+    async def test_empty_results(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the find-files tool with arguments that yield no results."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with arguments that should match no files
+            result = await session.call_tool(
+                "find-files",
+                {
+                    "directory": temp_test_directory,
+                    "arguments": "-name 'doesnt-exist-*.xyz'",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that the result is empty (or contains a message about no results)
+            assert result_text.strip() == "" or "No such file or directory" in result_text
