@@ -92,7 +92,6 @@ class ToolInfo:
         return "\n".join(lines)
 
 
-
 def build_command(command_template: str, parameters: dict[str, str]) -> str:
     r"""
     Build a shell command from a template by substituting parameter placeholders.
@@ -182,7 +181,6 @@ async def execute_command(cmd: str) -> str:
         return stdout_text
     except Exception as e:
         return f"Error: {e!s}"
-
 
 
 def parse_tools(config: dict) -> list[ToolInfo]:
@@ -320,4 +318,3 @@ def create_tool_info(toolset_name: str, tool_name: str, tool_config: dict) -> To
         exec_code=exec_code,
         runtime_info=runtime_info,
     )
-
