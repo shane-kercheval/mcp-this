@@ -4,7 +4,6 @@ import traceback
 import asyncio
 import subprocess
 from dataclasses import dataclass
-from textwrap import dedent
 
 
 @dataclass
@@ -277,15 +276,17 @@ def create_tool_info(toolset_name: str, tool_name: str, tool_config: dict) -> To
 
     param_string = ", ".join(param_parts)
 
-    # Create the function definition code
-    exec_code = dedent(f"""
-    async def {function_name}({param_string}) -> str:
-        \"\"\"
-        {description}
-        \"\"\"
-        # Collect parameters
-        params = {{}}
-    """)
+    # Create a multi-line string for the function definition with explicit indentation
+    # We carefully control where the indentation starts to ensure it works with exec()
+    code_lines = [
+        f"async def {function_name}({param_string}) -> str:",
+        '    """',
+        f'    {description}',
+        '    """',
+        '    # Collect parameters',
+        '    params = {}',
+    ]
+    exec_code = "\n".join(code_lines) + "\n"
 
     # Add code to collect parameters
     for param_name in parameters:
@@ -293,16 +294,15 @@ def create_tool_info(toolset_name: str, tool_name: str, tool_config: dict) -> To
         # This handles the case of str = '' default values
         exec_code += f"    params['{param_name}'] = {param_name}\n"
 
-    # Add code to build and execute the command
-    temp_code = dedent("""
-        # Get command template from tool_info
-        command_template = tool_info["command_template"]
-        # Build the command
-        cmd = build_command(command_template, params)
-        # Execute the command
-    """)
-    # re-indent 4 spaces
-    exec_code += "\n".join("    " + line for line in temp_code.splitlines()) + "    \n"
+    # Add code to build and execute the command with consistent indentation
+    command_code_lines = [
+        '    # Get command template from tool_info',
+        '    command_template = tool_info["command_template"]',
+        '    # Build the command',
+        '    cmd = build_command(command_template, params)',
+        '    # Execute the command',
+    ]
+    exec_code += "\n".join(command_code_lines) + "\n"
 
     # Execute the command with no working directory
     exec_code += "    return await execute_command(cmd)\n"
