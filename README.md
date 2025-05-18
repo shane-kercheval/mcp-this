@@ -4,7 +4,8 @@
 
 `mcp-this` is an MCP server that dynamically exposes CLI/bash commands as tools for MCP Clients (e.g. Claude Desktop), based on definitions in YAML or JSON configuration files. Rather than requiring you to write code, you simply define the commands, their parameters, and execution details in configuration files, and the server makes them available as tools that clients can use.
 
-The following snippet shows an example of a yaml file that defines three tools:
+For example, the following snippet shows a yaml file that defines three tools:
+
 - `get-directory-tree` (via `tree` command)
 - `find-files` (via `find` command)
 - `web-scraper` (via `lynx` command)
@@ -53,6 +54,22 @@ tools:
       dump_options:
         description: Additional lynx options (e.g., -width=100, -nolist, -source)
         required: false
+```
+
+If the file above was saved to `/path/to/your/custom_tools.yaml`, the corresponding MCP server config file (e.g. for Claude Desktop) would look like:
+
+```json
+{
+  "mcpServers": {
+    "mcp-this-custom": {
+      "command": "uvx",
+      "args": [
+        "mcp-this",
+        "--tools_path", "/path/to/your/custom_tools.yaml"
+      ]
+    }
+  }
+}
 ```
 
 ## Features
