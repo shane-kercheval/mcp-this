@@ -1044,8 +1044,9 @@ Line 5 no match
             assert 'Error' not in result_text
 
             # Check that line numbers are included
-            assert ":2:" in result_text
-            assert ":4:" in result_text
+            # The format can be either :2: (macOS) or 2: (Linux)
+            assert re.search(r'(:|^)2:', result_text) is not None
+            assert re.search(r'(:|^)4:', result_text) is not None
 
 
 @pytest.mark.asyncio
