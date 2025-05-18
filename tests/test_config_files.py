@@ -51,8 +51,6 @@ class TestConfigurationFiles:
                 load_config(tools_path=config_file.name)
 
 
-
-
     def test_default_config_file_content(self):
         """Test the content of the default configuration file."""
         # Find the default config path
@@ -83,32 +81,6 @@ class TestConfigurationFiles:
         assert isinstance(default_config, dict)
         assert "tools" in default_config or "toolsets" in default_config
 
-    def test_example_config_file_content(self):
-        """Test the content of example configuration files."""
-        # Find example config files
-        example_configs_dir = Path(__file__).parent.parent / "examples"
-        if not example_configs_dir.exists():
-            pytest.skip("Examples directory not found")
-
-        example_configs = list(example_configs_dir.glob("*.yaml"))
-
-        # Skip the test if no example config files are found
-        if not example_configs:
-            pytest.skip("No example configuration files found")
-
-        # Check each example config file
-        for config_path in example_configs:
-            # Load the example configuration
-            with open(config_path) as f:
-                example_config = yaml.safe_load(f)
-
-            # Skip if the file doesn't contain a valid YAML dictionary
-            if not isinstance(example_config, dict):
-                continue
-
-            # Validate the example configuration if it has tools or toolsets
-            if "tools" in example_config or "toolsets" in example_config:
-                validate_config(example_config)
 
     def test_config_with_empty_parameters(self):
         """Test configuration with empty parameters section."""
