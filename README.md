@@ -1,8 +1,59 @@
 # MCP-This
 
-> An MCP Server that dynamically exposes CLI commands as tools through YAML configuration files.
+> An MCP Server that dynamically exposes CLI/bash commands as tools through YAML configuration files.
 
-`mcp-this` is a MCP Server that creates tools dynamically from configuration files, allowing MCP Clients (e.g. Claude Desktop) to execute CLI commands without writing any code. Simply define which commands should be exposed as tools, along with their parameters and execution details, in a YAML or JSON format.
+`mcp-this` is an MCP server that dynamically exposes CLI/bash commands as tools for MCP Clients (e.g. Claude Desktop), based on definitions in YAML or JSON configuration files. Rather than requiring you to write code, you simply define the commands, their parameters, and execution details in configuration files, and the server makes them available as tools that clients can use.
+
+Here is an example of a yaml file that defines three tools:
+    - `get-directory-tree` (via `tree` command)
+    - `find-files` (via `find` command)
+    - `web-scraper` (via `lynx` command)
+
+```yaml
+tools:
+  get-directory-tree:
+    description: Generate a directory tree
+    execution:
+      command: >-
+        tree '<<directory>>'
+        -a --gitignore
+        -I ".git|.claude|.env|.venv|env|node_modules|__pycache__|.DS_Store|*.pyc<<custom_excludes>>"
+        <<format_args>>
+    parameters:
+      directory:
+        description: Directory to generate tree for.
+        required: true
+      custom_excludes:
+        description: Additional patterns to exclude (begin with | e.g., "|build|dist").
+        required: false
+      format_args:
+        description: Additional formatting arguments (e.g., "-L 3 -C --dirsfirst")
+        required: false
+
+  find-files:
+    description: Locate files by name, pattern, type, size, date, or other criteria
+    execution:
+      command: find '<<directory>>' -type f <<arguments>> | sort
+    parameters:
+      directory:
+        description: Directory to search in (quotes are handled automatically in the command)
+        required: true
+      arguments:
+        description: Additional find arguments (e.g., "-name *.py -mtime -7 -not -path */venv/*")
+        required: false
+
+  web-scraper:
+    description: Fetch a webpage and convert it to clean, readable text using lynx      
+    execution:
+      command: lynx -dump -nomargins -hiddenlinks=ignore <<dump_options>> '<<url>>'
+    parameters:
+      url:
+        description: URL of the webpage to fetch and convert to text
+        required: true
+      dump_options:
+        description: Additional lynx options (e.g., -width=100, -nolist, -source)
+        required: false
+```
 
 ## Features
 
