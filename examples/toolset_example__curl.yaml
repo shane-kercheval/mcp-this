@@ -1,0 +1,9 @@
+tools:
+  curl:
+    description: "Make HTTP requests"
+    execution:
+      command: "curl <<arguments>>"
+    parameters:
+      arguments:
+        description: "Complete curl arguments including options and URL"
+        required: true

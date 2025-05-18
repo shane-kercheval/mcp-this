@@ -1,0 +1,28 @@
+tools:
+  get-current-time:
+    description: |
+      Display the current date and time in various formats.
+      
+      Examples:
+      - get_current_time(format="iso")
+      - get_current_time(format="readable")
+      - get_current_time(format="unix")
+
+      If no format is specified, all formats will be displayed.
+    execution:
+      command: >-
+        if [ "<<format>>" = "iso" ]; then 
+          date -u +"%Y-%m-%dT%H:%M:%SZ"; 
+        elif [ "<<format>>" = "readable" ]; then 
+          date "+%A, %B %d, %Y %I:%M %p"; 
+        elif [ "<<format>>" = "unix" ]; then 
+          date +%s; 
+        else 
+          echo "ISO: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"; 
+          echo "Readable: $(date "+%A, %B %d, %Y %I:%M %p")"; 
+          echo "Unix timestamp: $(date +%s)"; 
+        fi
+    parameters:
+      format:
+        description: "Time format to display (iso, readable, unix, or leave empty for all formats)"
+        required: false

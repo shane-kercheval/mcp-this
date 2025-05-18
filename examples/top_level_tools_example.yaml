@@ -1,0 +1,30 @@
+tools:
+  echo:
+    description: "Simple echo command"
+    execution:
+      command: "echo <<message>>"
+    parameters:
+      message:
+        description: "Message to echo"
+        required: true
+  
+  curl:
+    description: "Make HTTP requests"
+    execution:
+      command: "curl <<arguments>>"
+    parameters:
+      arguments:
+        description: "Complete curl arguments including options and URL"
+        required: true
+
+  ls:
+    description: "List directory contents"
+    execution:
+      command: "ls <<options>> <<directory>>"
+    parameters:
+      options:
+        description: "Options for the ls command (e.g., -la)"
+        required: false
+      directory:
+        description: "Directory to list (defaults to current directory if empty)"
+        required: false

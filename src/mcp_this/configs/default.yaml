@@ -1,100 +1,276 @@
-toolsets:
-  curl:
-    description: "Transfer data from or to a server"
-    tools:
-      curl:
-        description: "Make HTTP requests"
-        help_text: |
-          Transfer data from or to a server using various protocols.
-          curl is a tool to transfer data from or to a server using supported protocols.
-          
-          Usage: curl [options...] <url>
-          
-          Examples:
-            curl https://example.com
-            curl -o output.html https://example.com
-            curl -X POST -d "data" https://api.example.com
-        execution:
-          command: "curl <<arguments>>"
-          uses_working_dir: false
-        parameters:
-          arguments:
-            description: "Complete curl arguments including options and URL"
-            required: true
-  
-  file:
-    description: "File operations and transformations"
-    tools:
-      find-and-count-lines:
-        description: "Find files matching a pattern and count lines in each file"
-        help_text: |
-          Find files matching a pattern and count the number of lines in each file.
-
-          This tool chains together 'find' and 'wc' commands to:
-          1. Find files matching the specified pattern
-          2. Count lines in each matching file
-
-          Examples:
-            find-and-count-lines "*.txt"
-            find-and-count-lines "src/*.py"
-        execution:
-          command: "find . -name \"<<pattern>>\" -type f -print0 | xargs -0 -r wc -l 2>/dev/null || echo 'No matching files found'"
-          uses_working_dir: true
-        parameters:
-          pattern:
-            description: "File pattern to search for (e.g., '*.txt', 'src/*.py')"
-            required: true
-          working_dir:
-            description: "Directory to search in (e.g., '/path/to/directory')"
-            required: false
-
-      grep-and-extract:
-        description: "Search for a pattern and extract matching files with context"
-        help_text: |
-          Search for a pattern in files and extract parts of matching files with context.
-
-          This tool chains 'grep' and 'sed' to:
-          1. Find lines matching the search pattern
-          2. Extract a specified number of lines before and after each match
-
-          Examples:
-            grep-and-extract "function main" "*.js" 3
-            grep-and-extract "import pandas" "*.py" 2
-        execution:
-          command: "for match in $(grep -r -n --include=\"<<file_pattern>>\" '<<search_pattern>>' . | awk -F: '{print $1\":\"$2}'); do file=$(echo $match | cut -d: -f1); line=$(echo $match | cut -d: -f2); printf \"\\n==== Context for %s at line %s ====\\n\" \"$file\" \"$line\"; sed -n \"$((line-<<context_lines>>)),+$((<<context_lines>>*2+1))p\" \"$file\"; echo; done || echo 'No matching files or patterns found'"
-          uses_working_dir: true
-        parameters:
-          search_pattern:
-            description: "Pattern to search for in files"
-            required: true
-          file_pattern:
-            description: "File pattern to search in (e.g., '*.py', 'src/')"
-            required: true
-          context_lines:
-            description: "Number of context lines to extract before and after each match"
-            required: true
-          working_dir:
-            description: "Directory to search in (e.g., '/path/to/directory')"
-            required: false
+tools:
+  get-directory-tree:
+    description: |
+      Generate a directory tree with standard exclusions and gitignore support
       
-      tail-follow:
-        description: "Display the last part of a file and follow its updates"
-        help_text: |
-          Display the last part of a file and follow its updates in real-time.
+      Examples:
+        - get_directory_tree(directory="/path/to/project")  # basic usage with default exclusions
+        - get_directory_tree(directory="/path/to/project", format_args="-L 3")  # limit depth to 3 levels
+        - get_directory_tree(directory="/home/user/code", custom_excludes="|dist|build", format_args="-C --dirsfirst")  # custom exclusions with colorized output and directories first
+    execution:
+      command: >-
+        tree '<<directory>>'
+        -a --gitignore
+        -I ".git|.claude|.env|.venv|env|node_modules|__pycache__|.DS_Store|*.pyc<<custom_excludes>>"
+        <<format_args>>
+    parameters:
+      directory:
+        description: Directory to generate tree for (quotes are handled automatically in the command)
+        required: true
+      custom_excludes:
+        description: Additional patterns to exclude (begin with | e.g., "|build|dist"). Probably not needed if there is a .gitignore file.
+        required: false
+      format_args:
+        description: Additional formatting arguments (e.g., "-L 3 -C --dirsfirst")
+        required: false
 
-          Useful for monitoring log files or other files that are being updated.
+  find-files:
+    description: |
+      Locate files by name, pattern, type, size, date, or other criteria
+      
+      Examples:
+        - find_files(directory="/full/path/src", arguments="-name *.py")  # find all Python files
+        - find_files(directory="/full/path/project", arguments="-mtime -7")  # find files modified in the last 7 days
+        - find_files(directory="/full/path/data", arguments="-size +1M")  # find files larger than 1 MB
+        - find_files(directory="/full/path/src", arguments="-name *.js -not -path */node_modules/*")  # find JS files excluding node_modules
+    execution:
+      command: >-
+        find '<<directory>>' -type f <<arguments>> | sort
+    parameters:
+      directory:
+        description: Directory to search in (quotes are handled automatically in the command)
+        required: true
+      arguments:
+        description: Additional find arguments (e.g., "-name *.py -mtime -7 -not -path */venv/*")
+        required: false
 
-          Example: tail-follow log.txt 20
-        execution:
-          command: "tail -n <<lines>> -f \"<<file>>\""
-          uses_working_dir: true
-        parameters:
-          file:
-            description: "File to monitor"
-            required: true
-          lines:
-            description: "Number of lines to show initially"
-            required: false
-          working_dir:
-            description: "Directory to run the command in (e.g., '/path/to/directory')"
-            required: false
+  find-text-patterns:
+    description: |
+      Find text patterns in files with optional context and filtering (via grep)
+      This tool is useful for searching through code files, logs, or any text files.
+
+      Examples:
+        - find_text_patterns(pattern="function", arguments="/full/path/directory --include=*.js")  # find "function" in JS files
+        - find_text_patterns(pattern="TODO:", arguments="-i /full/path/src --include=*.py --include=*.js -B 2 -A 2")  # find TODOs case-insensitively with 2 lines of context before and after
+        - find_text_patterns(pattern="import.*pandas", arguments="/full/path/src --include=*.py")  # find pandas imports in Python files
+        - find_text_patterns(pattern="error", arguments="-i /full/path/logs -A 5")  # find errors case-insensitively with 5 lines after
+
+        Output Example:
+
+        /full/path/src/script.py:10:    import pandas as pd
+        /full/path/src/script.py:20:    # TODO: Refactor this function
+        /full/path/src/script.py:30:    # TODO: Add error handling
+    execution:
+      command: >-
+        grep -r -n --color=never '<<pattern>>' <<arguments>>
+    parameters:
+      pattern:
+        description: Text pattern to search for (supports regex, quotes are handled automatically in the command)
+        required: true
+      arguments:
+        description: Additional grep arguments (e.g., directory/files to search, "-i for case-insensitive, -A 3 for context, --include=*.py")
+        required: false
+
+  extract-file-text:
+    description: |
+      Display contents of a file with optional line numbers or filtering
+      
+      Examples:
+        - extract_file_text(file="/path/to/script.py")  # view entire file with line numbers
+        - extract_file_text(file="/path/to/script.py", arguments="| sed -n '10,20p'")  # view only lines 10-20
+        - extract_file_text(file="/path/to/config.json", arguments="| python3 -m json.tool")  # pretty-print JSON file
+        - extract_file_text(file="/path/to/error.log", arguments="| grep ERROR")  # filter file to show only ERROR lines
+      
+        Output Example:
+        1  def main():
+        2      print('Hello world')
+        3
+        4  if __name__ == '__main__':
+        5      main()
+    execution:
+      command: >-
+        cat '<<file>>' <<arguments>> | nl -ba
+    parameters:
+      file:
+        description: Path to the file to display (quotes are handled automatically in the command)
+        required: true
+      arguments:
+        description: Additional processing options (e.g., "| sed -n '10,20p'" to show specific line range, "| python3 -m json.tool" to format JSON)
+        required: false
+
+  extract-code-info:
+    description: |
+      Analyze code files to extract key components like functions, classes, imports, and TODOs.
+      
+      This tool scans specified files for code elements and returns a structured report showing 
+      where each element is defined (with line numbers). It's useful for quickly understanding 
+      the structure of unfamiliar code without having to read entire files.
+      
+      Examples:
+        - extract_code_info(files="/path/to/script.py", types="functions")  # list functions in one file
+        - extract_code_info(files="*.py", types="functions,classes")  # list functions and classes in all Python files
+        - extract_code_info(files="src/*.js", types="imports,todos")  # show imports and TODOs in JavaScript files
+      
+      Output Format:
+      The output is organized by file, with each requested element type shown in separate sections:
+      
+      === File: /path/to/file.py ===
+      --- functions ---
+      10: def process_data(input_file):
+      45: def validate_input(data):
+      
+      --- classes ---
+      15: class DataProcessor:
+      120: class InputValidator:
+      
+      --- imports ---
+      3: import os
+      4: import sys
+      5: from pathlib import Path
+      
+      --- todos ---
+      28: # TODO: Add error handling
+      89: # FIXME: This is inefficient
+    execution:
+      command: "for file in $(find '<<files>>' -type f 2>/dev/null || echo '<<files>>'); do if [ ! -f \"$file\" ]; then continue; fi; echo \"=== File: $file ===\"; if [[ \"<<types>>\" == *\"functions\"* ]]; then echo \"--- functions ---\"; grep -n \"^[[:space:]]*def \" \"$file\" || grep -n \"function \" \"$file\" || echo \"No function definitions found\"; fi; if [[ \"<<types>>\" == *\"imports\"* ]]; then echo \"--- imports ---\"; grep -n \"^[[:space:]]*import \" \"$file\" || grep -n \"^[[:space:]]*from \" \"$file\" || grep -n \"require(\" \"$file\" || echo \"No imports found\"; fi; if [[ \"<<types>>\" == *\"classes\"* ]]; then echo \"--- classes ---\"; grep -n \"^[[:space:]]*class \" \"$file\" || echo \"No classes found\"; fi; if [[ \"<<types>>\" == *\"todos\"* ]]; then echo \"--- todos ---\"; grep -n -i \"TODO\\|FIXME\" \"$file\" || echo \"No TODOs found\"; fi; echo \"\"; done"
+    parameters:
+      files:
+        description: Path or pattern for code files to analyze (e.g., "src/*.py", or specific file path)
+        required: true
+      types:
+        description: Comma-separated list of information types to extract (functions, classes, imports, todos)
+        required: true
+
+  edit-file:
+    description: |
+      Modify a file with precise control - insert, replace, or delete content
+      
+      Examples:
+        - edit_file(file="/path/to/script.py", operation="insert_after", anchor="def main():", content="    logger.info('Function started')")  # add code after a function definition
+        - edit_file(file="/path/to/config.json", operation="replace", anchor="version", content="  \"version\": \"2.0\",")  # update a specific property
+        - edit_file(file="/path/to/script.py", operation="delete", anchor="# TODO: Remove this later")  # delete TODO comments
+        - edit_file(file="/path/to/file.txt", operation="insert_before", anchor="class User", content="# User class definition")  # add comment before class
+        - edit_file(file="/path/to/file.py", operation="replace_range", start_line="5", end_line="10", content="# This content replaces lines 5-10")  # replace a range of lines
+    execution:
+      command: >-
+        case "<<operation>>" in
+          "insert_after")
+            sed -i.bak "/<<anchor>>/a\\
+        <<content>>" '<<file>>';
+            echo "Inserted content after pattern '<<anchor>>'";
+            ;;
+          "insert_before")
+            sed -i.bak "/<<anchor>>/i\\
+        <<content>>" '<<file>>';
+            echo "Inserted content before pattern '<<anchor>>'";
+            ;;
+          "replace")
+            sed -i.bak "s/<<anchor>>.*$/<<content>>/" '<<file>>';
+            echo "Replaced line(s) matching '<<anchor>>'";
+            ;;
+          "delete")
+            sed -i.bak "/<<anchor>>/d" '<<file>>';
+            echo "Deleted line(s) matching '<<anchor>>'";
+            ;;
+          "replace_range")
+            sed -i.bak "<<start_line>>,<<end_line>>c\\
+        <<content>>" '<<file>>';
+            echo "Replaced lines <<start_line>>-<<end_line>>";
+            ;;
+          *)
+            echo "Unknown operation: <<operation>>";
+            echo "Available operations: insert_after, insert_before, replace, delete, replace_range";
+            exit 1;
+            ;;
+        esac;
+        if [ $? -eq 0 ]; then
+          rm -f "<<file>>.bak";
+          echo "File modified successfully:";
+          cat '<<file>>';
+        else
+          echo "Error modifying file";
+          exit 1;
+        fi
+    parameters:
+      file:
+        description: Path to the file to modify
+        required: true
+      operation:
+        description: "Type of modification: insert_after, insert_before, replace, delete, or replace_range"
+        required: true
+      anchor:
+        description: Pattern or text to match in the file (not needed for replace_range)
+        required: false
+      content:
+        description: Content to insert or use as replacement (not needed for delete)
+        required: false
+      start_line:
+        description: Starting line number (only for replace_range operation)
+        required: false
+      end_line:
+        description: Ending line number (only for replace_range operation)
+        required: false
+
+  create-file:
+    description: |
+      Create a new file with specified content
+      
+      Examples:
+        - create_file(path="/path/to/new_file.py", content="def main():\n    print('Hello world')\n\nif __name__ == '__main__':\n    main()")  # create a Python script
+        - create_file(path="/path/to/config.json", content="{\n  \"name\": \"project\",\n  \"version\": \"1.0.0\"\n}")  # create a JSON config file
+        - create_file(path="/path/to/.gitignore", content="node_modules/\n*.log\n.DS_Store")  # create a gitignore file
+    execution:
+      command: >-
+        if [ -f "<<path>>" ]; then
+          echo "Error: File '<<path>>' already exists. Use edit-file tool to modify existing files.";
+          exit 1;
+        else
+          mkdir -p "$(dirname "<<path>>")" &&
+          echo '<<content>>' > "<<path>>" &&
+          echo "File created successfully: <<path>>" &&
+          ls -la "<<path>>";
+        fi
+    parameters:
+      path:
+        description: Path where the file should be created (parent directories will be created if needed)
+        required: true
+      content:
+        description: Content to write to the file
+        required: true
+
+  create-directory:
+    description: |
+      Create a new directory or directory structure
+      
+      Examples:
+        - create_directory(path="/path/to/new_directory")  # create a single directory
+        - create_directory(path="/path/to/nested/directory/structure")  # create nested directories
+    execution:
+      command: >-
+        mkdir -p "<<path>>" &&
+        echo "Directory created successfully: <<path>>" &&
+        ls -la "<<path>>"
+    parameters:
+      path:
+        description: Path where the directory should be created (parent directories will be created if needed)
+        required: true
+
+  web-scraper:
+    description: |
+      Fetch a webpage and convert it to clean, readable text using lynx
+      
+      Examples:
+        - web_scraper(url="https://example.com")  # get basic text content
+        - web_scraper(url="https://docs.astral.sh/uv", dump_options="-width=100")  # wider output format
+        - web_scraper(url="https://news.site.com", dump_options="-nolist")  # without link list
+        - web_scraper(url="https://api.site.com/data.json", dump_options="-source")  # get source instead of rendered text
+    execution:
+      command: >-
+        lynx -dump -nomargins -hiddenlinks=ignore <<dump_options>> '<<url>>'
+    parameters:
+      url:
+        description: URL of the webpage to fetch and convert to text
+        required: true
+      dump_options:
+        description: Additional lynx options (e.g., -width=100, -nolist, -source)
+        required: false

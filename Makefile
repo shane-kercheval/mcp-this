@@ -1,4 +1,4 @@
-.PHONY: tests app build
+.PHONY: tests build linting unittests coverage mcp_dev mcp_install mcp_test verify package package-build package-publish help
 
 -include .env
 export
@@ -6,67 +6,90 @@ export
 ####
 # Project
 ####
-build:
+
+help: ## Display this help
+	@echo "MCP-This Development Commands"
+	@echo "============================="
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+build: ## Install dependencies 
 	uv sync
 
-# app:
-# 	uv run python ./src/app.py my-command --a 1 --b 2
+####
+# Development
+####
 
-	# uv run mcp dev ./src/mcp_this/mcp_server.py --config ./example_configs/basic.yaml
-	# uv run mcp dev -- ./src/mcp_this/mcp_server.py --config ./example_configs/basic.yaml
-# mcp_dev:
-# 	MCP_CONFIG_PATH=./example_configs/basic.yaml uv run mcp dev ./src/mcp_this/mcp_server.py
+mcp_dev: ## Run the MCP server with default config in development mode
+	MCP_THIS_CONFIG_PATH=./src/mcp_this/configs/default.yaml uv run mcp dev ./src/mcp_this/mcp_server.py
 
-mcp_dev:
-	MCP_CONFIG_PATH=./src/mcp_this/configs/default.yaml uv run mcp dev ./src/mcp_this/mcp_server.py
+mcp_custom: ## Run the MCP server with a custom config (path in CONFIG var)
+	MCP_THIS_CONFIG_PATH=$(CONFIG) uv run mcp dev ./src/mcp_this/mcp_server.py
 
-mcp_test:
+mcp_install: ## Install the MCP server in Claude Desktop with the default config
+	uv run mcp install --name "MCP-This" ./src/mcp_this/mcp_server.py
+
+mcp_install_custom: ## Install the MCP server with a custom config (path in CONFIG var)
+	uv run mcp install --name "MCP-This" ./src/mcp_this/mcp_server.py -- --config $(CONFIG)
+
+mcp_test: ## Run the sample test server
 	uv run mcp dev ./src/mcp_this/test_server.py
 
-mcp_clean:
-	uv run mcp dev ./src/mcp_this/clean_server.py
+####
+# Testing
+####
 
-mcp_minimal:
-	uv run mcp dev ./src/mcp_this/minimal_server.py
-
-
-linting:
+linting: ## Run linting checks
 	uv run ruff check src --fix --unsafe-fixes
 	uv run ruff check tests --fix --unsafe-fixes
 
-unittests:
+unittests: ## Run unit tests
 	uv run pytest tests -v --durations=10
 
-tests: linting unittests
+tests: linting coverage
 
-open_coverage:
+coverage: ## Run tests with coverage
+	uv run coverage run -m pytest --durations=0 tests
+	uv run coverage html
+
+open_coverage: ## Open coverage report in browser
 	open 'htmlcov/index.html'
 
+verify: linting unittests coverage ## Run all verification checks
 
-package-build:
+chat:
+	uv run python examples/cli.py \
+		-chat \
+		--mcp_config examples/mcp_config_cli.json \
+		--model 'gpt-4o'
+
+chat_tools:
+	uv run python examples/cli.py \
+		-tools \
+		--mcp_config examples/mcp_config_cli.json
+
+####
+# Packaging and Distribution
+####
+
+package-build: ## Build the package
 	rm -rf dist/*
 	uv build --no-sources
 
-package-publish:
+package-publish: ## Publish the package to PyPI (requires UV_PUBLISH_TOKEN)
 	uv publish --token ${UV_PUBLISH_TOKEN}
 
-package: package-build package-publish
+package: package-build package-publish ## Build and publish the package
 
+####
+# Development Tools
+####
 
-# ####
-# # DOCKER
-# ####
-# docker_build:
-# 	docker compose -f docker-compose.yml build
+add-dep: ## Add a dependency (PKG=package_name)
+	uv add $(PKG)
 
-# docker_run: docker_build
-# 	docker compose -f docker-compose.yml up
+add-dev-dep: ## Add a development dependency (PKG=package_name)
+	uv add $(PKG) --group dev
 
-# docker_down:
-# 	docker compose down --remove-orphans
-
-# docker_rebuild:
-# 	docker compose -f docker-compose.yml build --no-cache
-
-# docker_bash:
-# 	docker compose -f docker-compose.yml up --build bash
+## Run MCP-This with uvx directly (for Claude Desktop testing)
+test-uvx: 
+	npx -y uvx mcp-this --config ./src/mcp_this/configs/default.yaml --verbose

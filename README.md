@@ -1,205 +1,361 @@
-# project-template
+# MCP-This
 
+> An MCP Server that dynamically exposes CLI commands as tools through YAML configuration files.
 
+`mcp-this` is a MCP Server that creates tools dynamically from configuration files, allowing MCP Clients (e.g. Claude Desktop) to execute CLI commands without writing any code. Simply define which commands should be exposed as tools, along with their parameters and execution details, in a YAML or JSON format.
 
+## Features
 
-Claude Desktop Configuration
-Once your package is built and installed, you can configure Claude Desktop to use it:
-json{
-  "mcpServers": {
-    "cli-tools": {
-      "command": "mcp-this",
-      "args": ["--config", "/path/to/your/config.yaml"],
-      "env": {
-        "ANY_ENV_VAR": "value"
-      }
-    }
-  }
-}
-Or, if you want to use the default configuration that comes with the package:
-json{
-  "mcpServers": {
-    "cli-tools": {
-      "command": "mcp-this"
-    }
-  }
-}
+- **Dynamically create MCP tools** from YAML configuration files
+- **Define command-line tools** with parameters and execution details
+- **Default configuration** with common utility tools ready to use
+- **JSON configuration support** for programmatic use
 
+## Quick Start
 
+### `uvx`
 
+The simplest way to use the server is via `uvx`. This command lets you run Python tools without installing them globally. It creates a temporary environment just for that tool, runs it, and then cleans up.
 
+> **Note:** Examples below require installation of `uvx` - instructions can be found at [https://docs.astral.sh/uv/](https://docs.astral.sh/uv/).
 
+### Configuration
 
+The MCP Server can be configured to use:
+- Custom tools defined in a YAML file via the `--tools_path` command
+- Custom tools via a JSON string with the `--tools` command
+- Default tools from `./src/mcp_this/configs/default.yaml` if no configuration is provided
 
+## Claude Desktop Integration
 
+### Setting Up MCP-This with Claude Desktop
 
+1. Start Claude Desktop
+2. Navigate to `Settings -> Developer` and click "Edit Config"
+3. Open `claude_desktop_config.json` in your editor of choice
 
+### Using Default Tools
 
+When neither `--tools` nor `--tools_path` options are used, the server will use the default tools defined in `./src/mcp_this/configs/default.yaml`.
 
+**Step 1:** Replace/modify contents of `claude_desktop_config.json` with:
 
-
-
-
-
-To use this server, you would:
-
-Make sure your commands.yaml file is in the same directory
-Run python dynamic_cli_server.py to start the server
-Or use mcp dev dynamic_cli_server.py to test with the MCP Inspector
-Or use mcp install dynamic_cli_server.py to install in Claude Desktop
-
-
-
-full path needed?????
+```json
 {
   "mcpServers": {
-    "dynamic-cli-tools": {
-      "command": "python",
-      "args": [
-        "path/to/dynamic_cli_server.py"
-      ],
-      "env": {
-        "MCP_CONFIG_PATH": "path/to/commands.yaml"
-      }
+    "mcp-this-default": {
+      "command": "uvx",
+      "args": ["mcp-this"]
     }
   }
 }
+```
 
+**Step 1.1:** 
 
+A few of the default tools use commands that may not be installed on your machine (e.g. `tree`, `lynx`). See [Default Tools](#default-tools) and [Default Tool Dependencies](#default-tool-dependencies) sections below.
 
+**Step 2:** Restart Claude Desktop
 
-#!/usr/bin/env python3
-"""
-Installation helper for Dynamic CLI Tools MCP Server
+You should now see the `mcp-this-default` MCP server:
 
-This script generates the configuration file for Claude Desktop
-and provides instructions on how to install the server.
-"""
+<img src="./documentation/images/server-default.png" alt="Claude Desktop showing mcp-this-default server" width="400">
 
-import os
-import json
-import argparse
-import shutil
-from pathlib import Path
+**Step 3:** View and enable the tools by clicking on the server:
 
-def parse_args():
-    """Parse command line arguments"""
-    parser = argparse.ArgumentParser(description="Installation helper for Dynamic CLI Tool MCP Server")
-    parser.add_argument("--config", "-c", default="commands.yaml",
-                        help="Path to the YAML configuration file (default: commands.yaml)")
-    parser.add_argument("--name", "-n", default="dynamic-cli-tools",
-                        help="Name for the MCP server in Claude Desktop (default: dynamic-cli-tools)")
-    return parser.parse_args()
+<img src="./documentation/images/default-tools.png" alt="Default tools available in mcp-this" width="350">
 
-def generate_claude_config(server_name, config_path):
-    """Generate Claude Desktop configuration file"""
-    # Get the absolute paths
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    server_path = os.path.join(script_dir, "dynamic_cli_server.py")
-    config_path = os.path.join(script_dir, config_path)
-    
-    # Create the configuration
-    config = {
-        "mcpServers": {
-            server_name: {
-                "command": "python",
-                "args": [
-                    server_path,
-                    "--config",
-                    config_path
-                ]
-            }
-        }
+> **Troubleshooting:** If you see a `spawn uvx: ENOENT` or similar message:
+> - Make sure you have `uvx` installed
+> - Ensure `uvx` is in your `PATH` or use the full path (e.g., `/Users/<username>/.local/bin/uvx`)
+> - Check that dependencies for tools are installed (see [Default Tool Dependencies](#default-tool-dependencies))
+
+### Creating Custom Tools with YAML
+
+**Step 1:** Create a file called `custom_tools.yaml` with these contents:
+
+```yaml
+tools:
+  get-current-time:
+    description: |
+      Display the current date and time in various formats.
+      
+      If no format is specified, all formats will be displayed.
+
+      Examples:
+      - get_current_time(format="iso")
+      - get_current_time(format="readable")
+      - get_current_time(format="unix")
+    execution:
+      command: >-
+        if [ "<<format>>" = "iso" ]; then 
+          date -u +"%Y-%m-%dT%H:%M:%SZ"; 
+        elif [ "<<format>>" = "readable" ]; then 
+          date "+%A, %B %d, %Y %I:%M %p"; 
+        elif [ "<<format>>" = "unix" ]; then 
+          date +%s; 
+        else 
+          echo "ISO: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"; 
+          echo "Readable: $(date "+%A, %B %d, %Y %I:%M %p")"; 
+          echo "Unix timestamp: $(date +%s)"; 
+        fi
+    parameters:
+      format:
+        description: "Time format to display (iso, readable, unix, or leave empty for all formats)"
+        required: false
+```
+
+This yaml defines a single tool that will print out the current date/time in different formats. For example, `format=iso` will give `2025-05-18T17:17:39Z`.
+
+**Step 2:** Configure Claude Desktop to run both default and custom tools:
+
+```json
+{
+  "mcpServers": {
+    "mcp-this-default": {
+      "command": "uvx",
+      "args": ["mcp-this"]
+    },
+    "mcp-this-custom": {
+      "command": "uvx",
+      "args": [
+        "mcp-this",
+        "--tools_path", "/path/to/your/custom_tools.yaml"
+      ]
     }
-    
-    # Determine Claude Desktop config path
-    if os.name == 'posix':  # macOS/Linux
-        config_dir = os.path.expanduser("~/Library/Application Support/Claude")
-    else:  # Windows
-        config_dir = os.path.join(os.getenv("APPDATA"), "Claude")
-    
-    # Create the directory if it doesn't exist
-    os.makedirs(config_dir, exist_ok=True)
-    
-    # Path to the Claude Desktop config file
-    claude_config_path = os.path.join(config_dir, "claude_desktop_config.json")
-    
-    # Update existing config if it exists
-    if os.path.exists(claude_config_path):
-        try:
-            with open(claude_config_path, 'r') as f:
-                existing_config = json.load(f)
-            
-            # Update the servers section
-            if "mcpServers" not in existing_config:
-                existing_config["mcpServers"] = {}
-            
-            existing_config["mcpServers"][server_name] = config["mcpServers"][server_name]
-            config = existing_config
-            
-            print(f"Updating existing Claude Desktop configuration at: {claude_config_path}")
-        except Exception as e:
-            print(f"Error reading existing config, will create a new one: {e}")
-    else:
-        print(f"Creating new Claude Desktop configuration at: {claude_config_path}")
-    
-    # Write the configuration
-    with open(claude_config_path, 'w') as f:
-        json.dump(config, f, indent=2)
-    
-    return claude_config_path
+  }
+}
+```
 
-def main():
-    """Main function"""
-    args = parse_args()
-    
-    print("Installing Dynamic CLI Tool MCP Server for Claude Desktop...")
-    
-    # Generate Claude Desktop configuration
-    config_path = generate_claude_config(args.name, args.config)
-    
-    print("\nInstallation complete!")
-    print("\nConfiguration has been written to:")
-    print(f"  {config_path}")
-    print("\nTo use the server in Claude Desktop:")
-    print("1. Restart Claude Desktop if it's currently running")
-    print(f"2. Look for the '{args.name}' server in Claude Desktop")
-    print("\nYou can also test the server using the MCP Inspector:")
-    print(f"  mcp dev dynamic_cli_server.py --config {args.config}")
-    
-if __name__ == "__main__":
-    main()
+**Step 3:** Restart Claude Desktop to see both servers:
 
+<img src="./documentation/images/servers-default-custom.png" alt="Claude Desktop showing both default and custom servers" width="400">
 
+**Step 4:** Enable and use your custom tool:
 
+<img src="./documentation/images/custom-tool.png" alt="Custom get-current-time tool" width="350">
 
+When using the tool in Claude Desktop, you will see something like:
 
+<img src="./documentation/images/custom-tool-example.png" alt="Example of using the custom time tool" width="500">
 
-With these files:
+### Configuring with a JSON String
 
-dynamic_cli_server.py - The main server that accepts a config parameter
-commands.yaml - Your YAML configuration with all the CLI tools
-claude_desktop_config.json - Configuration for Claude Desktop (automatically created by the install script)
-install.py - Helper script to install the server for Claude Desktop
+You can also pass a JSON string containing tool definitions directly:
 
-You can then install the server by running:
-bashpython install.py
-This will:
+```json
+{
+  "mcpServers": {
+    "mcp-this-default": {
+      "command": "uvx",
+      "args": ["mcp-this"]
+    },
+    "mcp-this-custom": {
+      "command": "uvx",
+      "args": [
+        "mcp-this",
+        "--tools",
+        "{\"tools\":{\"current-time\":{\"description\":\"Display the current date and time in various formats.\\n\\nExamples:\\n- current_time(format=\\\"iso\\\")  # ISO format (2023-05-18T14:30:45)\\n- current_time(format=\\\"readable\\\")  # Human readable (Thursday, May 18, 2023 2:30 PM)\\n- current_time(format=\\\"unix\\\")  # Unix timestamp (1684421445)\\n\\nIf no format is specified, all formats will be displayed.\",\"execution\":{\"command\":\"if [ \\\"<<format>>\\\" = \\\"iso\\\" ]; then date -u +\\\"%Y-%m-%dT%H:%M:%SZ\\\"; elif [ \\\"<<format>>\\\" = \\\"readable\\\" ]; then date \\\"+%A, %B %d, %Y %I:%M %p\\\"; elif [ \\\"<<format>>\\\" = \\\"unix\\\" ]; then date +%s; else echo \\\"ISO: $(date -u +\\\"%Y-%m-%dT%H:%M:%SZ\\\")\\\"; echo \\\"Readable: $(date \\\"+%A, %B %d, %Y %I:%M %p\\\")\\\"; echo \\\"Unix timestamp: $(date +%s)\\\"; fi\"},\"parameters\":{\"format\":{\"description\":\"Time format to display (iso, readable, unix, or leave empty for all formats)\",\"required\":false}}}}}"
+      ]
+    }
+  }
+}
+```
 
-Create/update the Claude Desktop configuration
-Set up the server to use your commands.yaml file
-Provide instructions for using the server with Claude Desktop
+## Configuration Format
 
-This approach makes it easy to distribute your server to others who can simply run the install script to set it up with their Claude Desktop installation.
+Configuration can be provided as either a YAML file or a JSON string. The format supports both top-level tools and organized toolsets.
 
+### Basic Structure
 
+The example below shows the definition of a single tool called `tool-name`. The command that this tool will execute is `command-to-execute <<parameter_name>>`. `<<parameter_name>>` will be replaced with the corresponding value passed by the MCP Client (e.g. `session.call_tool('tool-name',{'parameter_name': 'This is the param value that will be passed to the tool'})`).
 
+For optional parameters (`required: false`), if the MCP client does not the parameter, the `<<parameter_name>>` will be removed before executing the command.
 
-- `make tests`
-- `make app`
+```yaml
+tools:
+  tool-name:
+    description: "Description of what the tool does"
+    execution:
+      command: "command-to-execute <<parameter_name>>"
+    parameters:
+      parameter_name:
+        description: "Description of the parameter"
+        required: true
+```
 
+### Tool Configuration
 
-## Misc
+Each tool requires the following configuration:
 
-- Add a new dependency: `uv add <package>`
-- Add a new `dev` dependency: `uv add <package> --group dev`
+| Component | Description |
+|-----------|-------------|
+| **description** | Human-readable description of the tool with examples |
+| **execution** | Command template with parameter placeholders (`<<parameter>>`) |
+| **parameters** | Definitions for each parameter the tool accepts |
+
+Parameters are specified in the form `<<parameter_name>>` in the command template and will be replaced with the actual parameter values when executed.
+
+## Default Tools
+
+The default configuration includes these powerful CLI tools:
+
+| Tool | Description |
+|------|-------------|
+| **get-directory-tree** | Generate a directory tree with standard exclusions and gitignore support |
+| **find-files** | Locate files by name, pattern, type, size, date, or other criteria |
+| **find-text-patterns** | Search for text patterns in files with context and filtering |
+| **extract-file-text** | Display file contents with options for line numbers or filtering |
+| **extract-code-info** | Analyze code files to extract functions, classes, imports, and TODOs |
+| **edit-file** | Modify files with precise control (insert, replace, delete) |
+| **create-file** | Create new files with specified content |
+| **create-directory** | Create new directories or directory structures |
+| **web-scraper** | Fetch webpages and convert to clean, readable text |
+
+### Default Tool Dependencies
+
+For the default tools to work correctly, install the following dependencies:
+
+**macOS:**
+```bash
+brew install tree  # Required for get-directory-tree
+brew install lynx  # Required for web-scraper
+```
+
+## Usage Examples
+
+### Python Client API
+
+```python
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+# Start server with default configuration
+server_params = StdioServerParameters(
+    command='python',
+    args=['-m', 'mcp_this'],
+)
+
+async with stdio_client(server_params) as (read, write):
+    async with ClientSession(read, write) as session:
+        await session.initialize()
+        
+        # List available tools
+        tools = await session.list_tools()
+        for tool in tools.tools:
+            print(f"- {tool.name}")
+        
+        # Call a tool
+        dir_tree_result = await session.call_tool(
+            'get-directory-tree',
+            {'directory': '/path/to/project'},
+        )
+        print(dir_tree_result.content[0].text)
+```
+
+### Defining Custom Tools in Python
+
+```python
+import json
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+# Define custom tools
+toolset_config = {
+    'tools': {
+        'extract-html-text': {
+            'description': "Fetch a webpage and extract pure text, removing HTML tags",
+            'execution': {
+                'command': "curl -s <<url>> | sed '/<style/,/<\\/style>/d; /<script/,/<\\/script>/d' | sed 's/<[^>]*>//g'",
+            },
+            'parameters': {
+                'url': {
+                    'description': "URL of the webpage to fetch",
+                    'required': True,
+                },
+            },
+        },
+    },
+}
+
+# Start server with custom configuration
+server_params = StdioServerParameters(
+    command='python',
+    args=['-m', 'mcp_this', '--tools', json.dumps(toolset_config)],
+)
+
+async with stdio_client(server_params) as (read, write):
+    async with ClientSession(read, write) as session:
+        await session.initialize()
+        
+        # Call custom tool
+        result = await session.call_tool(
+            'extract-html-text',
+            {'url': 'https://example.com'},
+        )
+        print(result.content[0].text)
+```
+
+## Configuration Methods
+
+You can provide configuration in several ways:
+
+| Method | Example |
+|--------|---------|
+| **Config File Path** | `--tools_path /path/to/config.yaml` |
+| **Config Value String** | `--tools '{"tools": {...}}'` |
+| **Environment Variable** | `MCP_THIS_CONFIG_PATH=/path/to/config.yaml` |
+| **Default Config** | If no configuration is provided, the default tools are used |
+
+## Development
+
+### Setup Development Environment
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/mcp-this.git
+cd mcp-this
+
+# Install dependencies
+uv sync
+```
+
+### Running Tests
+
+```bash
+# Run all tests, including linting
+make tests
+
+# Run only unit tests
+make unittests
+
+# Run only linting checks
+make linting
+
+# View test coverage
+make open_coverage
+```
+
+### Building and Publishing the Package
+
+```bash
+# Build the package
+make package-build
+
+# Publish the package (requires UV_PUBLISH_TOKEN)
+make package-publish
+```
+
+### Adding Dependencies
+
+```bash
+# Add a regular dependency
+uv add <package>
+
+# Add a development dependency
+uv add <package> --group dev
+```
+
+## License
+
+[Apache License 2.0](LICENSE)

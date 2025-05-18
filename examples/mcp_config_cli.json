@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "mcp-this": {
+      "command": "uv",
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "mcp_this",
+        "--tools_path",
+        "./examples/toolset_example__curl.yaml"
+      ],
+      "env": {}
+    }
+  }
+}
