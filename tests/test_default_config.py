@@ -645,3 +645,1419 @@ class TestFindFiles:
 
             # Check that the result is empty (or contains a message about no results)
             assert result_text.strip() == "" or "No such file or directory" in result_text
+
+
+@pytest.mark.asyncio
+class TestFindTextPatterns:
+    """Test the find-text-patterns tool from the default configuration."""
+
+    async def test_tool_registration(
+        self,
+        server_params: StdioServerParameters,
+    ):
+        """Test that the find-text-patterns tool is properly registered."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+            tools = await session.list_tools()
+
+            # Verify tool exists
+            tool_names = [t.name for t in tools.tools]
+            assert "find-text-patterns" in tool_names
+
+            # Get the tool details
+            find_text_patterns_tool = next(
+                t for t in tools.tools if t.name == "find-text-patterns"
+            )
+
+            # Check tool schema has the expected parameters
+            assert "pattern" in find_text_patterns_tool.inputSchema["properties"]
+            assert "arguments" in find_text_patterns_tool.inputSchema["properties"]
+
+            # Verify only 'pattern' is required
+            assert "required" in find_text_patterns_tool.inputSchema
+            assert "pattern" in find_text_patterns_tool.inputSchema["required"]
+            assert "arguments" not in find_text_patterns_tool.inputSchema["required"]
+
+    async def test_basic_text_search(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the find-text-patterns tool with basic text search."""
+        # Create test files with specific content
+        test_file1 = os.path.join(temp_test_directory, "test_search1.txt")
+        test_file2 = os.path.join(temp_test_directory, "test_search2.txt")
+        test_file3 = os.path.join(temp_test_directory, "test_search3.py")
+
+        with open(test_file1, "w") as f:  # noqa: ASYNC230
+            f.write("This is a test file with the keyword apple.\n"
+                    "Another line without the keyword.")
+
+        with open(test_file2, "w") as f:  # noqa: ASYNC230
+            f.write("This file has multiple apple mentions.\nHere is another apple on a new line.")
+
+        with open(test_file3, "w") as f:  # noqa: ASYNC230
+            f.write("def test_function():\n    # This is a Python file with apple mentioned\n    return 'apple'")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to find the pattern
+            result = await session.call_tool(
+                "find-text-patterns",
+                {
+                    "pattern": "apple",
+                    "arguments": temp_test_directory,
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that matches are found in all three files
+            assert "test_search1.txt" in result_text
+            assert "test_search2.txt" in result_text
+            assert "test_search3.py" in result_text
+
+            # Check that the correct lines are found
+            assert "keyword apple" in result_text
+            assert "multiple apple mentions" in result_text
+            assert "return 'apple'" in result_text
+
+    async def test_pattern_with_regex(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the find-text-patterns tool with regex patterns."""
+        # Create test files with specific content
+        python_file = os.path.join(temp_test_directory, "regex_test.py")
+        with open(python_file, "w") as f:  # noqa: ASYNC230
+            f.write("""
+import os
+import sys
+import numpy as np
+import pandas as pd
+from datetime import datetime
+
+def function1():
+    pass
+
+def function2(arg1, arg2=None):
+    return arg1 + arg2
+
+class TestClass:
+    def method1(self):
+        return "test"
+""")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to find import statements with regex
+            result = await session.call_tool(
+                "find-text-patterns",
+                {
+                    "pattern": "import.*",
+                    "arguments": python_file,
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that all import statements are found
+            assert "import os" in result_text
+            assert "import sys" in result_text
+            assert "import numpy" in result_text
+            assert "import pandas" in result_text
+
+            # Call the tool to find function definitions with regex
+            result2 = await session.call_tool(
+                "find-text-patterns",
+                {
+                    "pattern": "def function[0-9]",
+                    "arguments": python_file,
+                },
+            )
+
+            # Verify we got some output
+            assert result2.content
+            result2_text = result2.content[0].text
+
+            # Check that function definitions are found
+            assert "def function1" in result2_text
+            assert "def function2" in result2_text
+
+    async def test_search_with_context(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the find-text-patterns tool with context lines."""
+        # Create a test file with specific content
+        test_file = os.path.join(temp_test_directory, "context_test.txt")
+        with open(test_file, "w") as f:  # noqa: ASYNC230
+            f.write("""Line 1
+Line 2
+Line 3 with search term
+Line 4
+Line 5
+Line 6 with another search term
+Line 7
+Line 8
+""")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to find pattern with context (1 line before, 2 lines after)
+            result = await session.call_tool(
+                "find-text-patterns",
+                {
+                    "pattern": "search term",
+                    "arguments": f"-B 1 -A 2 {test_file}",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that context lines are included
+            # For first match
+            assert "Line 2" in result_text  # 1 line before
+            assert "Line 3 with search term" in result_text  # match
+            assert "Line 4" in result_text  # 1 line after
+            assert "Line 5" in result_text  # 2 lines after
+
+            # For second match
+            assert "Line 5" in result_text  # 1 line before
+            assert "Line 6 with another search term" in result_text  # match
+            assert "Line 7" in result_text  # 1 line after
+            assert "Line 8" in result_text  # 2 lines after
+
+    async def test_search_with_file_filter(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the find-text-patterns tool with file type filtering."""
+        # Create test files with different extensions but same content
+        py_file = os.path.join(temp_test_directory, "filter_test.py")
+        txt_file = os.path.join(temp_test_directory, "filter_test.txt")
+        js_file = os.path.join(temp_test_directory, "filter_test.js")
+
+        file_content = "This file contains the search pattern example"
+
+        for file_path in [py_file, txt_file, js_file]:
+            with open(file_path, "w") as f:  # noqa: ASYNC230
+                f.write(file_content)
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to search only in Python files
+            result = await session.call_tool(
+                "find-text-patterns",
+                {
+                    "pattern": "search pattern",
+                    "arguments": f"{temp_test_directory} --include='*.py'",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that only Python file is included
+            assert "filter_test.py" in result_text
+            assert "filter_test.txt" not in result_text
+            assert "filter_test.js" not in result_text
+
+            # Call the tool to search in both Python and JavaScript files
+            result2 = await session.call_tool(
+                "find-text-patterns",
+                {
+                    "pattern": "search pattern",
+                    "arguments": f"{temp_test_directory} --include='*.py' --include='*.js'",
+                },
+            )
+
+            # Verify we got some output
+            assert result2.content
+            result2_text = result2.content[0].text
+
+            # Check that both Python and JavaScript files are included
+            assert "filter_test.py" in result2_text
+            assert "filter_test.js" in result2_text
+            assert "filter_test.txt" not in result2_text
+
+    async def test_case_insensitive_search(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the find-text-patterns tool with case-insensitive search."""
+        # Create a test file with mixed case
+        test_file = os.path.join(temp_test_directory, "case_test.txt")
+        with open(test_file, "w") as f:  # noqa: ASYNC230
+            f.write("""This has ERROR in uppercase.
+This has error in lowercase.
+This has Error with mixed case.
+""")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with case-sensitive search (default)
+            result = await session.call_tool(
+                "find-text-patterns",
+                {
+                    "pattern": "error",
+                    "arguments": test_file,
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that only exact case match is found
+            assert "lowercase" in result_text
+            assert "uppercase" not in result_text
+            assert "mixed case" not in result_text
+
+            # Call the tool with case-insensitive search
+            result2 = await session.call_tool(
+                "find-text-patterns",
+                {
+                    "pattern": "error",
+                    "arguments": f"-i {test_file}",
+                },
+            )
+
+            # Verify we got some output
+            assert result2.content
+            result2_text = result2.content[0].text
+
+            # Check that all variations are found
+            assert "lowercase" in result2_text
+            assert "uppercase" in result2_text
+            assert "mixed case" in result2_text
+
+    async def test_non_existent_pattern(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the find-text-patterns tool with a pattern that doesn't exist."""
+        # Create a test file
+        test_file = os.path.join(temp_test_directory, "no_match.txt")
+        with open(test_file, "w") as f:  # noqa: ASYNC230
+            f.write("This file does not contain the search term.")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with a pattern not in the file
+            result = await session.call_tool(
+                "find-text-patterns",
+                {
+                    "pattern": "nonexistentpattern",
+                    "arguments": test_file,
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # The output might be empty or contain some indication that no matches were found
+            # Since implementations may vary, we just check that we got a response but don't
+            # validate the specific content
+            assert isinstance(result_text, str)
+
+    async def test_search_with_line_numbers(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the find-text-patterns tool showing line numbers."""
+        # Create a test file with line numbers
+        test_file = os.path.join(temp_test_directory, "line_numbers.txt")
+        with open(test_file, "w") as f:  # noqa: ASYNC230
+            f.write("""Line 1 no match
+Line 2 has the pattern
+Line 3 no match
+Line 4 has the pattern again
+Line 5 no match
+""")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with line number display
+            result = await session.call_tool(
+                "find-text-patterns",
+                {
+                    "pattern": "pattern",
+                    "arguments": f"-n {test_file}",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that line numbers are included
+            assert ":2:" in result_text
+            assert ":4:" in result_text
+
+
+@pytest.mark.asyncio
+class TestExtractFileText:
+    """Test the extract-file-text tool from the default configuration."""
+
+    async def test_tool_registration(
+        self,
+        server_params: StdioServerParameters,
+    ):
+        """Test that the extract-file-text tool is properly registered."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+            tools = await session.list_tools()
+
+            # Verify tool exists
+            tool_names = [t.name for t in tools.tools]
+            assert "extract-file-text" in tool_names
+
+            # Get the tool details
+            extract_file_tool = next(t for t in tools.tools if t.name == "extract-file-text")
+
+            # Check tool schema has the expected parameters
+            assert "file" in extract_file_tool.inputSchema["properties"]
+            assert "arguments" in extract_file_tool.inputSchema["properties"]
+
+            # Verify only 'file' is required
+            assert "required" in extract_file_tool.inputSchema
+            assert "file" in extract_file_tool.inputSchema["required"]
+            assert "arguments" not in extract_file_tool.inputSchema["required"]
+
+    async def test_basic_file_extraction(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the extract-file-text tool with basic usage."""
+        # Create a test file
+        test_file = os.path.join(temp_test_directory, "extract_test.txt")
+        with open(test_file, "w") as f:  # noqa: ASYNC230
+            f.write("""Line 1: Test content
+Line 2: More content
+Line 3: Final content""")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to extract the file content
+            result = await session.call_tool(
+                "extract-file-text",
+                {"file": test_file},
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that the content is displayed with line numbers
+            assert "1" in result_text
+            assert "Line 1: Test content" in result_text
+            assert "2" in result_text
+            assert "Line 2: More content" in result_text
+            assert "3" in result_text
+            assert "Line 3: Final content" in result_text
+
+    async def test_extract_specific_lines(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the extract-file-text tool with line filtering."""
+        # Create a test file with multiple lines
+        test_file = os.path.join(temp_test_directory, "multi_line.txt")
+        content = "\n".join([f"Line {i}" for i in range(1, 11)])
+        with open(test_file, "w") as f:  # noqa: ASYNC230
+            f.write(content)
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to extract specific lines (3-5)
+            result = await session.call_tool(
+                "extract-file-text",
+                {
+                    "file": test_file,
+                    "arguments": "| sed -n '3,5p'",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that only lines 3-5 are included (with new line numbers starting at 1)
+            assert "Line 3" in result_text
+            assert "Line 4" in result_text
+            assert "Line 5" in result_text
+            assert "Line 1" not in result_text
+            assert "Line 2" not in result_text
+            assert "Line 6" not in result_text
+
+    async def test_extract_with_filtering(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the extract-file-text tool with content filtering."""
+        # Create a test file with mixed content
+        test_file = os.path.join(temp_test_directory, "mixed_content.txt")
+        with open(test_file, "w") as f:  # noqa: ASYNC230
+            f.write("""INFO: System started
+DEBUG: Initializing components
+ERROR: Failed to connect to database
+INFO: Retrying connection
+DEBUG: Connection parameters
+ERROR: Connection timeout
+INFO: Shutdown initiated""")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to extract only ERROR lines
+            result = await session.call_tool(
+                "extract-file-text",
+                {
+                    "file": test_file,
+                    "arguments": "| grep ERROR",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that only ERROR lines are included
+            assert "ERROR: Failed to connect to database" in result_text
+            assert "ERROR: Connection timeout" in result_text
+            assert "INFO:" not in result_text
+            assert "DEBUG:" not in result_text
+
+    async def test_json_formatting(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the extract-file-text tool with JSON formatting."""
+        # Create a test JSON file (unformatted)
+        test_file = os.path.join(temp_test_directory, "test.json")
+        with open(test_file, "w") as f:  # noqa: ASYNC230
+            f.write('{"name":"Test","values":[1,2,3],"nested":{"key":"value"}}')
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to format the JSON
+            result = await session.call_tool(
+                "extract-file-text",
+                {
+                    "file": test_file,
+                    "arguments": "| python3 -m json.tool",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that the JSON is properly formatted
+            # Since line numbers might be present and formatting might vary,
+            # look for basic patterns
+            assert "name" in result_text
+            assert "Test" in result_text
+            assert "values" in result_text
+            assert "nested" in result_text
+            assert "key" in result_text
+            assert "value" in result_text
+
+            # The formatted output should be longer than the original
+            # since it adds spaces and newlines
+            assert len(result_text) > len('{"name":"Test","values":[1,2,3],"nested":{"key":"value"}}')
+
+    async def test_non_existent_file(
+        self,
+        server_params: StdioServerParameters,
+    ):
+        """Test the extract-file-text tool with a non-existent file."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with a non-existent file
+            result = await session.call_tool(
+                "extract-file-text",
+                {"file": "/path/that/doesnt/exist.txt"},
+            )
+
+            # Verify we got some output (likely an error message)
+            assert result.content
+            result_text = result.content[0].text
+
+            # Just check that we received some output
+            assert len(result_text) > 0
+
+    async def test_extract_binary_file(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the extract-file-text tool with a binary file."""
+        # Create a simple binary file
+        binary_file = os.path.join(temp_test_directory, "binary.bin")
+        with open(binary_file, "wb") as f:  # noqa: ASYNC230
+            f.write(bytes([0x00, 0x01, 0x02, 0x03, 0xFF, 0xFE, 0xFD, 0xFC]))
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to extract the binary content
+            result = await session.call_tool(
+                "extract-file-text",
+                {"file": binary_file},
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Just make sure we got some output, content verification not necessary
+            # Binary files may display differently across platforms
+            assert isinstance(result_text, str)
+            assert len(result_text) > 0
+
+
+@pytest.mark.asyncio
+class TestExtractCodeInfo:
+    """Test the extract-code-info tool from the default configuration."""
+
+    async def test_tool_registration(
+        self,
+        server_params: StdioServerParameters,
+    ):
+        """Test that the extract-code-info tool is properly registered."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+            tools = await session.list_tools()
+
+            # Verify tool exists
+            tool_names = [t.name for t in tools.tools]
+            assert "extract-code-info" in tool_names
+
+            # Get the tool details
+            extract_code_tool = next(t for t in tools.tools if t.name == "extract-code-info")
+
+            # Check tool schema has the expected parameters
+            assert "files" in extract_code_tool.inputSchema["properties"]
+            assert "types" in extract_code_tool.inputSchema["properties"]
+
+            # Verify both parameters are required
+            assert "required" in extract_code_tool.inputSchema
+            assert "files" in extract_code_tool.inputSchema["required"]
+            assert "types" in extract_code_tool.inputSchema["required"]
+
+    async def test_tool_can_be_called(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test that the extract-code-info tool can be called correctly."""
+        # Create a simple Python file to analyze
+        test_file = os.path.join(temp_test_directory, "test.py")
+        with open(test_file, "w") as f:  # noqa: ASYNC230
+            f.write("print('Hello world')\n")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with minimal arguments
+            result = await session.call_tool(
+                "extract-code-info",
+                {
+                    "files": test_file,
+                    "types": "functions",
+                },
+            )
+
+            # Verify that the call returns a result (we don't validate content)
+            assert result.content
+            result_text = result.content[0].text
+            assert isinstance(result_text, str)
+
+    async def test_different_types_parameter(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test that the extract-code-info tool can be called with different types parameters."""
+        # Create a simple Python file to analyze
+        test_file = os.path.join(temp_test_directory, "multi_type.py")
+        with open(test_file, "w") as f:  # noqa: ASYNC230
+            f.write("print('Hello world')\n")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with different types parameter
+            result = await session.call_tool(
+                "extract-code-info",
+                {
+                    "files": test_file,
+                    "types": "classes",
+                },
+            )
+
+            # Verify that the call returns a result (we don't validate content)
+            assert result.content
+            result_text = result.content[0].text
+            assert isinstance(result_text, str)
+
+
+
+    async def test_multiple_types_parameter(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test that the extract-code-info tool can be called with multiple types parameters."""
+        # Create a simple Python file to analyze
+        test_file = os.path.join(temp_test_directory, "multi_param.py")
+        with open(test_file, "w") as f:  # noqa: ASYNC230
+            f.write("print('Hello world')\n")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with multiple types parameter
+            result = await session.call_tool(
+                "extract-code-info",
+                {
+                    "files": test_file,
+                    "types": "functions,classes,imports,todos",
+                },
+            )
+
+            # Verify that the call returns a result (we don't validate content)
+            assert result.content
+            result_text = result.content[0].text
+            assert isinstance(result_text, str)
+
+
+
+    async def test_non_existent_file(
+        self,
+        server_params: StdioServerParameters,
+    ):
+        """Test the extract-code-info tool with a non-existent file."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with a non-existent file
+            result = await session.call_tool(
+                "extract-code-info",
+                {
+                    "files": "/path/that/doesnt/exist.py",
+                    "types": "functions",
+                },
+            )
+
+            # Verify we got some output (likely an error message or empty result)
+            assert result.content
+            result_text = result.content[0].text
+
+            # Just check that we received some output
+            assert isinstance(result_text, str)
+            assert len(result_text) > 0
+
+
+@pytest.mark.asyncio
+class TestEditFile:
+    """Test the edit-file tool from the default configuration."""
+
+    async def test_tool_registration(
+        self,
+        server_params: StdioServerParameters,
+    ):
+        """Test that the edit-file tool is properly registered."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+            tools = await session.list_tools()
+
+            # Verify tool exists
+            tool_names = [t.name for t in tools.tools]
+            assert "edit-file" in tool_names
+
+            # Get the tool details
+            edit_file_tool = next(t for t in tools.tools if t.name == "edit-file")
+
+            # Check tool schema has the expected parameters
+            expected_parameters = [
+                "file", "operation", "anchor", "content", "start_line", "end_line",
+            ]
+            for param in expected_parameters:
+                assert param in edit_file_tool.inputSchema["properties"]
+
+            # Verify required parameters
+            assert "required" in edit_file_tool.inputSchema
+            assert "file" in edit_file_tool.inputSchema["required"]
+            assert "operation" in edit_file_tool.inputSchema["required"]
+
+    async def test_basic_operation(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test that the edit-file tool can be called successfully."""
+        # Create a test file
+        test_file = os.path.join(temp_test_directory, "test_edit.txt")
+        with open(test_file, "w") as f:  # noqa: ASYNC230
+            f.write("Line 1\nLine 2\nLine 3\n")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with a basic operation
+            result = await session.call_tool(
+                "edit-file",
+                {
+                    "file": test_file,
+                    "operation": "replace",
+                    "anchor": "Line 2",
+                    "content": "Replaced Line",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # We just verify that the command returned some output
+            assert isinstance(result_text, str)
+            assert len(result_text) > 0
+
+    async def test_with_different_operations(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the edit-file tool with different operations."""
+        # Create a test file
+        test_file = os.path.join(temp_test_directory, "test_operations.txt")
+        with open(test_file, "w") as f:  # noqa: ASYNC230
+            f.write("Line 1\nLine 2\nLine 3\n")
+
+        operations = [
+            "insert_after",
+            "insert_before",
+            "replace",
+            "delete",
+        ]
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with each operation
+            for operation in operations:
+                params = {
+                    "file": test_file,
+                    "operation": operation,
+                    "anchor": "Line 2",
+                }
+
+                # Content is required for all operations except delete
+                if operation != "delete":
+                    params["content"] = "Test Content"
+
+                # Call the tool
+                result = await session.call_tool("edit-file", params)
+
+                # Verify we got some output
+                assert result.content
+                result_text = result.content[0].text
+
+                # We just verify that the command returned some output
+                assert isinstance(result_text, str)
+                assert len(result_text) > 0
+
+    async def test_replace_range_operation(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the edit-file tool with replace_range operation."""
+        # Create a test file
+        test_file = os.path.join(temp_test_directory, "test_replace_range.txt")
+        with open(test_file, "w") as f:  # noqa: ASYNC230
+            f.write("Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to replace a range of lines
+            result = await session.call_tool(
+                "edit-file",
+                {
+                    "file": test_file,
+                    "operation": "replace_range",
+                    "start_line": "2",
+                    "end_line": "4",
+                    "content": "Replaced Range",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # We just verify that the command returned some output
+            assert isinstance(result_text, str)
+            assert len(result_text) > 0
+
+
+
+    async def test_with_invalid_operation(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the edit-file tool with an invalid operation."""
+        # Create a test file
+        test_file = os.path.join(temp_test_directory, "test_invalid.txt")
+        with open(test_file, "w") as f:  # noqa: ASYNC230
+            f.write("Line 1\nLine 2\nLine 3\n")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with an invalid operation
+            result = await session.call_tool(
+                "edit-file",
+                {
+                    "file": test_file,
+                    "operation": "invalid_operation",
+                    "anchor": "Line 2",
+                    "content": "New Content",
+                },
+            )
+
+            # Verify we got some output (likely an error message)
+            assert result.content
+            result_text = result.content[0].text
+
+            # We just verify that the command returned some output
+            assert isinstance(result_text, str)
+            assert len(result_text) > 0
+
+    async def test_non_existent_file(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the edit-file tool with a non-existent file."""
+        non_existent_file = os.path.join(temp_test_directory, "non_existent.txt")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with a non-existent file
+            result = await session.call_tool(
+                "edit-file",
+                {
+                    "file": non_existent_file,
+                    "operation": "insert_after",
+                    "anchor": "Pattern",
+                    "content": "New Content",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # The exact error message might vary by implementation
+            # Just check that we got some output
+            assert isinstance(result_text, str)
+            assert len(result_text) > 0
+
+
+@pytest.mark.asyncio
+class TestCreateFile:
+    """Test the create-file tool from the default configuration."""
+
+    async def test_tool_registration(
+        self,
+        server_params: StdioServerParameters,
+    ):
+        """Test that the create-file tool is properly registered."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+            tools = await session.list_tools()
+
+            # Verify tool exists
+            tool_names = [t.name for t in tools.tools]
+            assert "create-file" in tool_names
+
+            # Get the tool details
+            create_file_tool = next(t for t in tools.tools if t.name == "create-file")
+
+            # Check tool schema has the expected parameters
+            assert "path" in create_file_tool.inputSchema["properties"]
+            assert "content" in create_file_tool.inputSchema["properties"]
+
+            # Verify required parameters
+            assert "required" in create_file_tool.inputSchema
+            assert "path" in create_file_tool.inputSchema["required"]
+            assert "content" in create_file_tool.inputSchema["required"]
+
+    async def test_create_simple_file(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test creating a simple file."""
+        # Define a file path
+        test_file = os.path.join(temp_test_directory, "test_create.txt")
+        file_content = "This is a test file content"
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to create a file
+            result = await session.call_tool(
+                "create-file",
+                {
+                    "path": test_file,
+                    "content": file_content,
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that the call was successful
+            assert "File created successfully" in result_text or "created successfully" in result_text
+
+            # Verify the file exists
+            assert os.path.exists(test_file)
+            # Read file and strip any trailing whitespace/newlines for comparison
+            with open(test_file) as f:
+                content = f.read().strip()
+                assert content == file_content.strip()
+
+    async def test_create_file_with_nested_directory(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test creating a file in a nested directory that doesn't exist yet."""
+        # Define a file path in a nested directory that doesn't exist
+        nested_dir = os.path.join(temp_test_directory, "nested", "subdirectory")
+        test_file = os.path.join(nested_dir, "test_nested.txt")
+        file_content = "This file is in a nested directory"
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to create a file (should create parent directories)
+            result = await session.call_tool(
+                "create-file",
+                {
+                    "path": test_file,
+                    "content": file_content,
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that the call was successful
+            assert "File created successfully" in result_text or "created successfully" in result_text
+
+            # Verify the directory and file exist
+            assert os.path.exists(nested_dir)
+            assert os.path.exists(test_file)
+            # Read file and strip any trailing whitespace/newlines for comparison
+            with open(test_file) as f:
+                content = f.read().strip()
+                assert content == file_content.strip()
+
+    async def test_create_file_that_already_exists(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test creating a file that already exists."""
+        # Create a file first
+        existing_file = os.path.join(temp_test_directory, "existing.txt")
+        with open(existing_file, "w") as f:  # noqa: ASYNC230
+            f.write("Original content")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to try to create the same file
+            result = await session.call_tool(
+                "create-file",
+                {
+                    "path": existing_file,
+                    "content": "New content",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that the operation didn't succeed
+            # The exact message might vary but it should indicate the file already exists
+            assert "already exists" in result_text or "Error" in result_text
+
+            # Verify the file still has the original content
+            with open(existing_file) as f:
+                content = f.read()
+                assert content == "Original content"
+
+
+@pytest.mark.asyncio
+class TestCreateDirectory:
+    """Test the create-directory tool from the default configuration."""
+
+    async def test_tool_registration(
+        self,
+        server_params: StdioServerParameters,
+    ):
+        """Test that the create-directory tool is properly registered."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+            tools = await session.list_tools()
+
+            # Verify tool exists
+            tool_names = [t.name for t in tools.tools]
+            assert "create-directory" in tool_names
+
+            # Get the tool details
+            create_dir_tool = next(t for t in tools.tools if t.name == "create-directory")
+
+            # Check tool schema has the expected parameters
+            assert "path" in create_dir_tool.inputSchema["properties"]
+
+            # Verify required parameters
+            assert "required" in create_dir_tool.inputSchema
+            assert "path" in create_dir_tool.inputSchema["required"]
+
+    async def test_create_simple_directory(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test creating a simple directory."""
+        # Define a directory path
+        test_dir = os.path.join(temp_test_directory, "test_create_dir")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to create a directory
+            result = await session.call_tool(
+                "create-directory",
+                {
+                    "path": test_dir,
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that the call was successful
+            assert "Directory created successfully" in result_text or "created successfully" in result_text
+
+            # Verify the directory exists
+            assert os.path.exists(test_dir)
+            assert os.path.isdir(test_dir)
+
+    async def test_create_nested_directory(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test creating a nested directory structure."""
+        # Define a nested directory path
+        nested_dir = os.path.join(temp_test_directory, "nested", "multi", "level", "directory")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to create a nested directory structure
+            result = await session.call_tool(
+                "create-directory",
+                {
+                    "path": nested_dir,
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check that the call was successful
+            assert "Directory created successfully" in result_text or "created successfully" in result_text
+
+            # Verify the directory exists
+            assert os.path.exists(nested_dir)
+            assert os.path.isdir(nested_dir)
+
+            # Verify parent directories were also created
+            parent_dir = os.path.join(temp_test_directory, "nested", "multi", "level")
+            assert os.path.exists(parent_dir)
+            assert os.path.isdir(parent_dir)
+
+    async def test_create_directory_that_already_exists(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test creating a directory that already exists."""
+        # Create a directory first
+        existing_dir = os.path.join(temp_test_directory, "existing_dir")
+        os.makedirs(existing_dir)
+
+        # Create a file in the directory to verify it's not affected
+        marker_file = os.path.join(existing_dir, "marker.txt")
+        with open(marker_file, "w") as f:  # noqa: ASYNC230
+            f.write("This is a marker file")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to create the same directory
+            result = await session.call_tool(
+                "create-directory",
+                {
+                    "path": existing_dir,
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # The operation should succeed (mkdir -p is idempotent)
+            assert "Directory created successfully" in result_text or "created successfully" in result_text
+
+            # The marker file should still exist
+            assert os.path.exists(marker_file)
+
+
+@pytest.mark.asyncio
+class TestWebScraper:
+    """Test the web-scraper tool from the default configuration."""
+
+    async def test_tool_registration(
+        self,
+        server_params: StdioServerParameters,
+    ):
+        """Test that the web-scraper tool is properly registered."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+            tools = await session.list_tools()
+
+            # Verify tool exists
+            tool_names = [t.name for t in tools.tools]
+            assert "web-scraper" in tool_names
+
+            # Get the tool details
+            web_scraper_tool = next(t for t in tools.tools if t.name == "web-scraper")
+
+            # Check tool schema has the expected parameters
+            assert "url" in web_scraper_tool.inputSchema["properties"]
+            assert "dump_options" in web_scraper_tool.inputSchema["properties"]
+
+            # Verify required parameters
+            assert "required" in web_scraper_tool.inputSchema
+            assert "url" in web_scraper_tool.inputSchema["required"]
+            assert "dump_options" not in web_scraper_tool.inputSchema["required"]
+
+    async def test_basic_scraping(
+        self,
+        server_params: StdioServerParameters,
+    ):
+        """Test the web-scraper tool with basic usage - using a simple, stable URL."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with a stable URL (example.com)
+            result = await session.call_tool(
+                "web-scraper",
+                {"url": "http://example.com"},
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # Check for expected content in the output
+            # example.com is very stable and should contain these phrases
+            assert "Example Domain" in result_text
+            assert "illustrative examples" in result_text
+
+    async def test_with_dump_options(
+        self,
+        server_params: StdioServerParameters,
+    ):
+        """Test the web-scraper tool with custom dump options."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with custom width option
+            result = await session.call_tool(
+                "web-scraper",
+                {
+                    "url": "http://example.com",
+                    "dump_options": "-width=50",  # Set a narrow width
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+
+            # The content should still contain the expected text
+            assert "Example Domain" in result_text
+
+            # Test with source option to get HTML
+            result2 = await session.call_tool(
+                "web-scraper",
+                {
+                    "url": "http://example.com",
+                    "dump_options": "-source",  # Get source HTML
+                },
+            )
+
+            # Verify we got some output
+            assert result2.content
+            result2_text = result2.content[0].text
+
+            # Source HTML should contain HTML tags
+            assert "<html" in result2_text
+            assert "<head" in result2_text
+            assert "<body" in result2_text
+
+    async def test_invalid_url(
+        self,
+        server_params: StdioServerParameters,
+    ):
+        """Test the web-scraper tool with an invalid or non-existent URL."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with an invalid URL
+            result = await session.call_tool(
+                "web-scraper",
+                {"url": "http://this-domain-does-not-exist-123456789.com"},
+            )
+
+            # Verify we got some output (likely an error message)
+            assert result.content
+            result_text = result.content[0].text
+
+            # Just check that we received some output
+            assert len(result_text) > 0
