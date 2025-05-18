@@ -46,16 +46,23 @@ tools:
 
   find-text-patterns:
     description: |
-      Find text patterns in files with optional context and filtering.
+      Find text patterns in files with optional context and filtering (via grep)
+      This tool is useful for searching through code files, logs, or any text files.
 
       Examples:
         - find_text_patterns(pattern="function", arguments="/full/path/directory --include=*.js")  # find "function" in JS files
         - find_text_patterns(pattern="TODO:", arguments="-i /full/path/src --include=*.py --include=*.js -B 2 -A 2")  # find TODOs case-insensitively with 2 lines of context before and after
         - find_text_patterns(pattern="import.*pandas", arguments="/full/path/src --include=*.py")  # find pandas imports in Python files
         - find_text_patterns(pattern="error", arguments="-i /full/path/logs -A 5")  # find errors case-insensitively with 5 lines after
+
+        Output Example:
+
+        /full/path/src/script.py:10:    import pandas as pd
+        /full/path/src/script.py:20:    # TODO: Refactor this function
+        /full/path/src/script.py:30:    # TODO: Add error handling
     execution:
       command: >-
-        grep -r --color=never '<<pattern>>' <<arguments>>
+        grep -r -n --color=never '<<pattern>>' <<arguments>>
     parameters:
       pattern:
         description: Text pattern to search for (supports regex, quotes are handled automatically in the command)
@@ -73,6 +80,13 @@ tools:
         - extract_file_text(file="/path/to/script.py", arguments="| sed -n '10,20p'")  # view only lines 10-20
         - extract_file_text(file="/path/to/config.json", arguments="| python3 -m json.tool")  # pretty-print JSON file
         - extract_file_text(file="/path/to/error.log", arguments="| grep ERROR")  # filter file to show only ERROR lines
+      
+        Output Example:
+        1  def main():
+        2      print('Hello world')
+        3
+        4  if __name__ == '__main__':
+        5      main()
     execution:
       command: >-
         cat '<<file>>' <<arguments>> | nl -ba
@@ -86,42 +100,39 @@ tools:
 
   extract-code-info:
     description: |
-      Extract and analyze code information (functions, classes, imports, etc.) from multiple files
+      Analyze code files to extract key components like functions, classes, imports, and TODOs.
+      
+      This tool scans specified files for code elements and returns a structured report showing 
+      where each element is defined (with line numbers). It's useful for quickly understanding 
+      the structure of unfamiliar code without having to read entire files.
       
       Examples:
         - extract_code_info(files="/path/to/script.py", types="functions")  # list functions in one file
         - extract_code_info(files="*.py", types="functions,classes")  # list functions and classes in all Python files
         - extract_code_info(files="src/*.js", types="imports,todos")  # show imports and TODOs in JavaScript files
+      
+      Output Format:
+      The output is organized by file, with each requested element type shown in separate sections:
+      
+      === File: /path/to/file.py ===
+      --- functions ---
+      10: def process_data(input_file):
+      45: def validate_input(data):
+      
+      --- classes ---
+      15: class DataProcessor:
+      120: class InputValidator:
+      
+      --- imports ---
+      3: import os
+      4: import sys
+      5: from pathlib import Path
+      
+      --- todos ---
+      28: # TODO: Add error handling
+      89: # FIXME: This is inefficient
     execution:
-      command: >-
-        for file in $(find <<files>> -type f 2>/dev/null || echo <<files>>); do
-          if [ ! -f "$file" ]; then
-            continue
-          fi
-          echo "=== File: $file ===";
-          
-          if [[ "<<types>>" == *"functions"* ]]; then
-            echo "--- functions ---";
-            grep -n "^[[:space:]]*def " "$file" || grep -n "function " "$file" || echo "No function definitions found";
-          fi
-          
-          if [[ "<<types>>" == *"imports"* ]]; then
-            echo "--- imports ---";
-            grep -n "^[[:space:]]*import " "$file" || grep -n "^[[:space:]]*from " "$file" || grep -n "require(" "$file" || echo "No imports found";
-          fi
-          
-          if [[ "<<types>>" == *"classes"* ]]; then
-            echo "--- classes ---";
-            grep -n "^[[:space:]]*class " "$file" || echo "No classes found";
-          fi
-          
-          if [[ "<<types>>" == *"todos"* ]]; then
-            echo "--- todos ---";
-            grep -n -i "TODO\|FIXME" "$file" || echo "No TODOs found";
-          fi
-          
-          echo "";
-        done
+      command: "for file in $(find '<<files>>' -type f 2>/dev/null || echo '<<files>>'); do if [ ! -f \"$file\" ]; then continue; fi; echo \"=== File: $file ===\"; if [[ \"<<types>>\" == *\"functions\"* ]]; then echo \"--- functions ---\"; grep -n \"^[[:space:]]*def \" \"$file\" || grep -n \"function \" \"$file\" || echo \"No function definitions found\"; fi; if [[ \"<<types>>\" == *\"imports\"* ]]; then echo \"--- imports ---\"; grep -n \"^[[:space:]]*import \" \"$file\" || grep -n \"^[[:space:]]*from \" \"$file\" || grep -n \"require(\" \"$file\" || echo \"No imports found\"; fi; if [[ \"<<types>>\" == *\"classes\"* ]]; then echo \"--- classes ---\"; grep -n \"^[[:space:]]*class \" \"$file\" || echo \"No classes found\"; fi; if [[ \"<<types>>\" == *\"todos\"* ]]; then echo \"--- todos ---\"; grep -n -i \"TODO\\|FIXME\" \"$file\" || echo \"No TODOs found\"; fi; echo \"\"; done"
     parameters:
       files:
         description: Path or pattern for code files to analyze (e.g., "src/*.py", or specific file path)
