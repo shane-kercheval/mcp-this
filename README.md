@@ -43,9 +43,14 @@ The simplest way to get started is to use default tools and replace/modify conte
 
 Then when you restart Claude you should see `mcp-this-default` mcp server:
 
-![Claude Desktop showing mcp-this-default server](./documentation/images/server-default.png)
+<img src="./documentation/images/server-default.png" alt="Claude Desktop showing mcp-this-default server" width="300">
 
-If you see a `spawn uvx: ENOENT` or similar message it could mean:
+You can view the tools and enable/disable by clicking on the server:
+
+<img src="./documentation/images/default-tools.png" alt="Claude Desktop showing mcp-this-default server" width="250">
+
+
+NOTE: If you see a `spawn uvx: ENOENT` or similar message it could mean:
 - you don't have `uvx` installed (see note above)
 - `uvx` is installed but not in the `PATH`
     - add it to your `PATH` or use use the full path e.g. `/Users/<username>/.local/bin/uvx`
@@ -113,7 +118,20 @@ tools:
 }
 ```
 
+<img src="./documentation/images/servers-default-custom.png" alt="Claude Desktop showing mcp-this-default server" width="300">
+
+Which should have the following tool.
+
+<img src="./documentation/images/custom-tool.png" alt="Claude Desktop showing mcp-this-default server" width="300">
+
+When using the tool in Claude Desktop, you will see something like:
+
+<img src="./documentation/images/custom-tool-example.png" alt="Claude Desktop showing mcp-this-default server" width="500">
+
+
 ### Example Passing Tools as JSON string
+
+You can also pass a JSON string containing the tool definitions directly to the server. This is equivalent to the previous example where we passed the path to a yaml file.
 
 ```json
 {
