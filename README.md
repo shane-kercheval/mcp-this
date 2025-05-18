@@ -1,202 +1,226 @@
 # MCP-This
 
-> MCP Server that exposes CLI commands as tools using YAML files.
+> An MCP Server that dynamically exposes CLI commands as tools through YAML configuration files.
 
-`mcp-this` is an MCP server that makes command-line tools available to Claude via the Model-Control-Protocol. The server reads YAML configuration files to define which commands should be exposed as MCP tools, along with their parameters and execution details. This allows Claude to execute CLI commands without requiring you to write any code.
+`mcp-this` creates MCP tools from configuration files, allowing Claude to execute CLI commands without requiring you to write any code. Simply define which commands should be exposed as tools, along with their parameters and execution details, in a YAML or JSON format.
 
-## 📋 Features
+## Features
 
-- 🔧 **Dynamic Tool Creation**: Define CLI tools in YAML without writing code
-- 🔄 **Command Execution**: Execute shell commands with parameter substitution
-- 📁 **Working Directory Support**: Run commands in specific directories
-- 🧩 **Toolset Organization**: Group related tools into logical toolsets
-- 🤖 **Claude Integration**: Seamless integration with Claude Desktop
+- Dynamically create MCP tools from a YAML configuration file
+- Define command-line tools with parameters and execution details
+- Default configuration with common utility tools
+- Support for JSON configuration string for programmatic use
+- Compatible with Claude Desktop and Claude MCP API
 
-## 🚀 Installation
-
-### Using pip
+## Installation
 
 ```bash
+# Install using uv (recommended)
+uv install mcp-this
+
+# Or with pip
 pip install mcp-this
 ```
 
-### Using uv (recommended)
+## Quick Start
+
+### Using the Default Tools
 
 ```bash
-uv pip install mcp-this
+# Start the MCP server with default tools
+uvx mcp-this
+
+# Or using the MCP framework
+mcp dev -m mcp_this
 ```
 
-## 🏁 Quick Start
-
-1. Create a YAML configuration file:
-
-### Using top-level tools
-
-```yaml
-tools:
-  curl:
-    description: "Make HTTP requests"
-    execution:
-      command: "curl <<arguments>>"
-    parameters:
-      arguments:
-        description: "Complete curl arguments including options and URL"
-        required: true
-```
-
-### Using toolsets
-
-A toolset is a way to organize groups of tools. In the future, toolsets could, for example, share settings like allow/deny lists. Toolsets could also be used, for example, to enable/disable/search for sets of tools.
-
-```yaml
-toolsets:
-  curl:
-    description: "Transfer data from or to a server"
-    tools:
-      curl:
-        description: "Make HTTP requests"
-        execution:
-          command: "curl <<arguments>>"
-        parameters:
-          arguments:
-            description: "Complete curl arguments including options and URL"
-            required: true
-```
-
-2. Run the MCP server:
+### Using Custom Tools
 
 ```bash
-# Using tools path
-mcp-this --tools-path /path/to/your/config.yaml
+# Using a custom configuration file
+uvx mcp-this --config_path ./my_config.yaml
 
-# Using JSON string directly
-mcp-this --tools '{"tools": {"echo": {"description": "Echo command", "execution": {"command": "echo <<message>>"}, "parameters": {"message": {"description": "Message to echo", "required": true}}}}}'
-
-# Using environment variable
-export MCP_THIS_CONFIG_PATH=/path/to/your/config.yaml
-mcp-this
+# Using the MCP framework with a custom configuration
+mcp dev -m mcp_this --config_path ./my_config.yaml
 ```
 
-## 🛠️ Configuration Structure
+### Using with Claude Desktop
 
-The configuration YAML files can follow one of two structures:
-
-### Toolsets Format (Original)
-
-This format organizes tools into logical groups called toolsets:
-
-```yaml
-toolsets:
-  toolset_name:
-    description: "Toolset description"
-    tools:
-      tool_name:
-        description: "Tool description"
-        execution:
-          command: "command template with <<parameter>> placeholders"
-        parameters:
-          parameter_name:
-            description: "Parameter description"
-            required: true/false
-```
-
-### Top-level Tools Format (New)
-
-This simpler format defines tools directly at the top level:
-
-```yaml
-tools:
-  tool_name:
-    description: "Tool description"
-    execution:
-      command: "command template with <<parameter>> placeholders"
-    parameters:
-      parameter_name:
-        description: "Parameter description"
-        required: true/false
-```
-
-### Combined Format
-
-You can also use both formats in the same file:
-
-```yaml
-tools:
-  echo:
-    description: "Simple echo command"
-    execution:
-      command: "echo <<message>>"
-    parameters:
-      message:
-        description: "Message to echo"
-        required: true
-
-toolsets:
-  file:
-    description: "File operations"
-    tools:
-      cat:
-        description: "Display file contents"
-        execution:
-          command: "cat <<file_path>>"
-        parameters:
-          file_path:
-            description: "Path to file"
-            required: true
-```
-
-### Parameter Substitution
-
-Parameters in command templates use the `<<parameter>>` syntax:
-
-```yaml
-command: "find . -name \"<<pattern>>\" -type f | xargs wc -l"
-```
-
-When the tool is invoked, these placeholders are replaced with the actual parameter values.
-
-## 🔌 Claude Desktop Integration
-
-### Using uvx (Recommended)
-
-The simplest way to configure Claude Desktop is to use `npx` and `uvx` to install and run `mcp-this` on demand:
+Add to your Claude Desktop configuration:
 
 ```json
 {
   "mcpServers": {
-    "mcp-this": {
+    "mcp-this-default": {
+      "command": "uvx",
+      "args": ["mcp-this"]
+    },
+    "mcp-this-custom": {
       "command": "uvx",
       "args": [
         "mcp-this",
-        // "--tools", "{\"tools\": <json string defining tools>}"
-        "--tools-path", "/path/to/your/config.yaml"
-      ],
+        "--config_path",
+        "./my_config.yaml"
+      ]
     }
   }
 }
 ```
 
-This approach:
-- Automatically installs the latest version from PyPI when needed
-- Doesn't require manual installation or updates
-- Cleanly isolates dependencies
+## Configuration Format
 
-### Using a locally installed package
+Configuration can be provided either as a YAML file or a JSON string. The format supports both top-level tools and organized toolsets.
 
-If you've installed `mcp-this` globally or in your environment:
+### Basic Structure
 
-```json
-{
-  "mcpServers": {
-    "mcp-this": {
-      "command": "mcp-this",
-      "args": ["--tools-path", "/path/to/your/config.yaml"],
-    }
-  }
-}
+```yaml
+# Option 1: Define tools at the top level
+tools:
+  tool-name:
+    description: "Description of what the tool does"
+    execution:
+      command: "command-to-execute <<parameter>>"
+    parameters:
+      parameter:
+        description: "Description of the parameter"
+        required: true
+
+# Option 2: Organize tools into toolsets
+toolsets:
+  toolset-name:
+    description: "Description of the toolset"
+    tools:
+      tool-name:
+        description: "Description of what the tool does"
+        execution:
+          command: "command-to-execute <<parameter>>"
+        parameters:
+          parameter:
+            description: "Description of the parameter"
+            required: true
 ```
 
-## 🧪 Development
+### Tool Configuration
+
+Each tool requires the following configuration:
+
+- **description**: Human-readable description of the tool
+- **execution**: Command template with parameter placeholders (`<<parameter>>`)
+- **parameters**: Definitions for each parameter the tool accepts
+
+Parameters are specified in the form `<<parameter_name>>` in the command template and will be replaced with the actual parameter values when executed.
+
+## Default Tools
+
+The following tools are included in the default configuration:
+
+- `get-directory-tree`: Generate a directory tree with standard exclusions
+- `find-files`: Locate files by name, pattern, type, and other criteria
+- `find-text-patterns`: Search for text patterns in files with context and filtering
+- `extract-file-text`: Display file contents with options for line numbers or filtering
+- `extract-code-info`: Analyze code files to extract functions, classes, imports, and TODOs
+- `edit-file`: Modify files with precise control (insert, replace, delete)
+- `create-file`: Create new files with specified content
+- `create-directory`: Create new directories or directory structures
+- `web-scraper`: Fetch webpages and convert to clean, readable text
+
+### Default Tool Dependencies
+
+For the default tools to work correctly, the following dependencies are required:
+
+**Mac:**
+```bash
+brew install tree
+brew install lynx
+```
+
+- `tree` - Used by `get-directory-tree`
+- `lynx` - Used by `web-scraper`
+
+## Usage Examples
+
+### Python Client API
+
+```python
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+# Start server with default configuration
+server_params = StdioServerParameters(
+    command='python',
+    args=['-m', 'mcp_this'],
+)
+
+async with stdio_client(server_params) as (read, write):
+    async with ClientSession(read, write) as session:
+        await session.initialize()
+        
+        # List available tools
+        tools = await session.list_tools()
+        for tool in tools.tools:
+            print(f"- {tool.name}")
+        
+        # Call a tool
+        dir_tree_result = await session.call_tool(
+            'get-directory-tree',
+            {'directory': '/path/to/project'},
+        )
+        print(dir_tree_result.content[0].text)
+```
+
+### Defining Custom Tools
+
+```python
+import json
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+# Define custom tools
+toolset_config = {
+    'tools': {
+        'extract-html-text': {
+            'description': "Fetch a webpage and extract pure text, removing HTML tags",
+            'execution': {
+                'command': "curl -s <<url>> | sed '/<style/,/<\\/style>/d; /<script/,/<\\/script>/d' | sed 's/<[^>]*>//g'",
+            },
+            'parameters': {
+                'url': {
+                    'description': "URL of the webpage to fetch",
+                    'required': True,
+                },
+            },
+        },
+    },
+}
+
+# Start server with custom configuration
+server_params = StdioServerParameters(
+    command='python',
+    args=['-m', 'mcp_this', '--config_value', json.dumps(toolset_config)],
+)
+
+async with stdio_client(server_params) as (read, write):
+    async with ClientSession(read, write) as session:
+        await session.initialize()
+        
+        # Call custom tool
+        result = await session.call_tool(
+            'extract-html-text',
+            {'url': 'https://example.com'},
+        )
+        print(result.content[0].text)
+```
+
+## Configuration Methods
+
+You can provide configuration in several ways:
+
+1. **Config File Path**: `--config_path /path/to/config.yaml`
+2. **Config Value String**: `--config_value '{"tools": {...}}'`
+3. **Environment Variable**: `MCP_THIS_CONFIG_PATH=/path/to/config.yaml`
+4. **Default Config**: If no configuration is provided, the default configuration is used
+
+## Development
 
 ### Setup Development Environment
 
@@ -209,45 +233,42 @@ cd mcp-this
 uv sync
 ```
 
-### Development Commands
+### Running Tests
 
 ```bash
-# Run linting
-make linting
-
-# Run tests
+# Run all tests, including linting
 make tests
 
-# Run the MCP server in development mode
-make mcp_dev
+# Run only unit tests
+make unittests
 
-# Build package
+# Run only linting checks
+make linting
+
+# View test coverage
+make open_coverage
+```
+
+### Building and Publishing the Package
+
+```bash
+# Build the package
 make package-build
 
-# Publish package to PyPI
+# Publish the package (requires UV_PUBLISH_TOKEN)
 make package-publish
 ```
 
-### Testing with MCP Inspector
+### Adding Dependencies
 
 ```bash
-# Test with MCP Inspector using environment variable
-MCP_THIS_CONFIG_PATH=./path/to/config.yaml uv run mcp dev ./src/mcp_this/mcp_server.py
+# Add a regular dependency
+uv add <package>
 
-# Test with MCP Inspector using command-line flags
-uv run mcp dev -m mcp_this --tools-path ./path/to/config.yaml
-
-# Test with MCP Inspector using JSON string
-uv run mcp dev -m mcp_this --tools '{"tools": {"example": {"description": "Example tool", "execution": {"command": "echo Test"}}}}'
+# Add a development dependency
+uv add <package> --group dev
 ```
 
-## 📚 Examples
+## License
 
-Check out the [examples](./examples) directory for sample configuration files and usage patterns:
-
-- [top_level_tools_example.yaml](./examples/top_level_tools_example.yaml): Example of the simplified top-level tools format
-- [toolset_example__curl.yaml](./examples/toolset_example__curl.yaml): Example of the original toolsets format
-
-## 📜 License
-
-This project is licensed under the terms of the LICENSE file included in the repository.
+[Apache License 2.0](LICENSE)
