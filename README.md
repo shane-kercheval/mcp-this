@@ -13,9 +13,18 @@
 
 ## Quick Start
 
+### `uvx`
+
 The simplest way to use the server is via `uvx`. This command lets you run Python tools without installing them globally. It creates a temporary environment just for that tool, runs it, and then cleans up.
 
 > **Note:** Examples below require installation of `uvx` - instructions can be found at [https://docs.astral.sh/uv/](https://docs.astral.sh/uv/).
+
+### Configuration
+
+The MCP Server can be configured to use:
+- Custom tools defined in a YAML file via the `--tools_path` command
+- Custom tools via a JSON string with the `--tools` command
+- Default tools from `./src/mcp_this/configs/default.yaml` if no configuration is provided
 
 ## Claude Desktop Integration
 
@@ -27,10 +36,7 @@ The simplest way to use the server is via `uvx`. This command lets you run Pytho
 
 ### Using Default Tools
 
-The MCP Server can be configured to use:
-- Custom tools defined in a YAML file via the `--tools_path` command
-- Custom tools via a JSON string with the `--tools` command
-- Default tools from `./src/mcp_this/configs/default.yaml` if no configuration is provided
+When neither `--tools` nor `--tools_path` options are used, the server will use the default tools defined in `./src/mcp_this/configs/default.yaml`.
 
 **Step 1:** Replace/modify contents of `claude_desktop_config.json` with:
 
@@ -44,6 +50,10 @@ The MCP Server can be configured to use:
   }
 }
 ```
+
+**Step 1.1:** 
+
+A few of the default tools use commands that may not be installed on your machine (e.g. `tree`, `lynx`). See [Default Tools](#default-tools) and [Default Tool Dependencies](#default-tool-dependencies) sections below.
 
 **Step 2:** Restart Claude Desktop
 
@@ -70,12 +80,12 @@ tools:
     description: |
       Display the current date and time in various formats.
       
+      If no format is specified, all formats will be displayed.
+
       Examples:
       - get_current_time(format="iso")
       - get_current_time(format="readable")
       - get_current_time(format="unix")
-
-      If no format is specified, all formats will be displayed.
     execution:
       command: >-
         if [ "<<format>>" = "iso" ]; then 
@@ -95,7 +105,7 @@ tools:
         required: false
 ```
 
-This tool will print out the current date/time in different formats. For example, `format=iso` will give `2025-05-18T17:17:39Z`.
+This yaml defines a single tool that will print out the current date/time in different formats. For example, `format=iso` will give `2025-05-18T17:17:39Z`.
 
 **Step 2:** Configure Claude Desktop to run both default and custom tools:
 
@@ -158,31 +168,20 @@ Configuration can be provided as either a YAML file or a JSON string. The format
 
 ### Basic Structure
 
+The example below shows the definition of a single tool called `tool-name`. The command that this tool will execute is `command-to-execute <<parameter_name>>`. `<<parameter_name>>` will be replaced with the corresponding value passed by the MCP Client (e.g. `session.call_tool('tool-name',{'parameter_name': 'This is the param value that will be passed to the tool'})`).
+
+For optional parameters (`required: false`), if the MCP client does not the parameter, the `<<parameter_name>>` will be removed before executing the command.
+
 ```yaml
-# Option 1: Define tools at the top level
 tools:
   tool-name:
     description: "Description of what the tool does"
     execution:
-      command: "command-to-execute <<parameter>>"
+      command: "command-to-execute <<parameter_name>>"
     parameters:
-      parameter:
+      parameter_name:
         description: "Description of the parameter"
         required: true
-
-# Option 2: Organize tools into toolsets
-toolsets:
-  toolset-name:
-    description: "Description of the toolset"
-    tools:
-      tool-name:
-        description: "Description of what the tool does"
-        execution:
-          command: "command-to-execute <<parameter>>"
-        parameters:
-          parameter:
-            description: "Description of the parameter"
-            required: true
 ```
 
 ### Tool Configuration
