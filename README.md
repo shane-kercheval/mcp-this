@@ -2,35 +2,37 @@
 
 > An MCP Server that dynamically exposes CLI commands as tools through YAML configuration files.
 
-`mcp-this` creates MCP tools from configuration files, allowing Claude to execute CLI commands without requiring you to write any code. Simply define which commands should be exposed as tools, along with their parameters and execution details, in a YAML or JSON format.
+`mcp-this` is a MCP Server that creates tools dynamically from configuration files, allowing MCP Clients (e.g. Claude Desktop) to execute CLI commands without writing any code. Simply define which commands should be exposed as tools, along with their parameters and execution details, in a YAML or JSON format.
 
-## Features
+## ✨ Features
 
-- Dynamically create MCP tools from a YAML configuration file
-- Define command-line tools with parameters and execution details
-- Default configuration with common utility tools
-- Support for JSON configuration string for programmatic use
-- Compatible with Claude Desktop and Claude MCP API
+- **Dynamically create MCP tools** from YAML configuration files
+- **Define command-line tools** with parameters and execution details
+- **Default configuration** with common utility tools ready to use
+- **JSON configuration support** for programmatic use
 
-# Quick Start
+## 🚀 Quick Start
 
-The simplest way to use the server is via `uvx`. `uvx` is a command that lets you run Python tools without installing them globally. It creates a temporary environment just for that tool, runs it, and then cleans up. Examples below require installation of `uvx` - instructions can be found here [https://docs.astral.sh/uv/](https://docs.astral.sh/uv/).
+The simplest way to use the server is via `uvx`. This command lets you run Python tools without installing them globally. It creates a temporary environment just for that tool, runs it, and then cleans up.
 
-## Claude Desktop
+> **Note:** Examples below require installation of `uvx` - instructions can be found at [https://docs.astral.sh/uv/](https://docs.astral.sh/uv/).
 
-- Start Claude Desktop
-- Navigate to `Settings->Developer`; click "Edit Config"
-- Open `claude_desktop_config.json` in your editor of choice
+## 🖥️ Claude Desktop Integration
+
+### Setting Up MCP-This with Claude Desktop
+
+1. Start Claude Desktop
+2. Navigate to `Settings -> Developer` and click "Edit Config"
+3. Open `claude_desktop_config.json` in your editor of choice
 
 ### Using Default Tools
 
-- The MCP Server can be configured to use custom tools defined in a yaml file via the `--tools_path` command or it can be given a single json string via `--tools`. 
-- If neither are provided, the tools defined in `./src/mcp_this/configs/default.yaml` are used, which are:
-    - TODO: list default tools with brief descriptions
+The MCP Server can be configured to use:
+- Custom tools defined in a YAML file via the `--tools_path` command
+- Custom tools via a JSON string with the `--tools` command
+- Default tools from `./src/mcp_this/configs/default.yaml` if no configuration is provided
 
-    - Optionally install dependencies if you want to use the tools (see notes below)
-
-The simplest way to get started is to use default tools and replace/modify contents of `claude_desktop_config.json` with:
+**Step 1:** Replace/modify contents of `claude_desktop_config.json` with:
 
 ```json
 {
@@ -43,26 +45,24 @@ The simplest way to get started is to use default tools and replace/modify conte
 }
 ```
 
-Then when you restart Claude you should see `mcp-this-default` mcp server:
+**Step 2:** Restart Claude Desktop
 
-<img src="./documentation/images/server-default.png" alt="Claude Desktop showing mcp-this-default server" width="300">
+You should now see the `mcp-this-default` MCP server:
 
-You can view the tools and enable/disable by clicking on the server:
+<img src="./documentation/images/server-default.png" alt="Claude Desktop showing mcp-this-default server" width="400">
 
-<img src="./documentation/images/default-tools.png" alt="Claude Desktop showing mcp-this-default server" width="250">
+**Step 3:** View and enable the tools by clicking on the server:
 
+<img src="./documentation/images/default-tools.png" alt="Default tools available in mcp-this" width="350">
 
-NOTE: If you see a `spawn uvx: ENOENT` or similar message it could mean:
-- you don't have `uvx` installed (see note above)
-- `uvx` is installed but not in the `PATH`
-    - add it to your `PATH` or use use the full path e.g. `/Users/<username>/.local/bin/uvx`
+> **Troubleshooting:** If you see a `spawn uvx: ENOENT` or similar message:
+> - Make sure you have `uvx` installed
+> - Ensure `uvx` is in your `PATH` or use the full path (e.g., `/Users/<username>/.local/bin/uvx`)
+> - Check that dependencies for tools are installed (see [Default Tool Dependencies](#default-tool-dependencies))
 
+### Creating Custom Tools with YAML
 
-### Example Passing Yaml that Defines Tools
-
-As mentioned above, the MCP Server can be configured to use custom tools defined in a yaml file via the `--tools_path` command.
-
-- Create a file called `custom_tools.yaml` with these contents:
+**Step 1:** Create a file called `custom_tools.yaml` with these contents:
 
 ```yaml
 tools:
@@ -95,12 +95,9 @@ tools:
         required: false
 ```
 
-> This tool will print out the current date/time e.g. `format=iso` will give `2025-05-18T17:17:39`.
+This tool will print out the current date/time in different formats. For example, `format=iso` will give `2025-05-18T17:17:39Z`.
 
-- Replace/modify contents of `claude_desktop_config.json` with:
-    - This will start two `mcp-this` servers, `mcp-this-default` and `mcp-this-custom`
-        - `mcp-this-default`: This server does not specify any tools and will load the default tools described in the example above.
-        - `mcp-this-custom`: This server defines a tool called `get-current-time`.
+**Step 2:** Configure Claude Desktop to run both default and custom tools:
 
 ```json
 {
@@ -120,20 +117,21 @@ tools:
 }
 ```
 
-<img src="./documentation/images/servers-default-custom.png" alt="Claude Desktop showing mcp-this-default server" width="300">
+**Step 3:** Restart Claude Desktop to see both servers:
 
-Which should have the following tool.
+<img src="./documentation/images/servers-default-custom.png" alt="Claude Desktop showing both default and custom servers" width="400">
 
-<img src="./documentation/images/custom-tool.png" alt="Claude Desktop showing mcp-this-default server" width="300">
+**Step 4:** Enable and use your custom tool:
+
+<img src="./documentation/images/custom-tool.png" alt="Custom get-current-time tool" width="350">
 
 When using the tool in Claude Desktop, you will see something like:
 
-<img src="./documentation/images/custom-tool-example.png" alt="Claude Desktop showing mcp-this-default server" width="500">
+<img src="./documentation/images/custom-tool-example.png" alt="Example of using the custom time tool" width="500">
 
+### Configuring with a JSON String
 
-### Example Passing Tools as JSON string
-
-You can also pass a JSON string containing the tool definitions directly to the server. This is equivalent to the previous example where we passed the path to a yaml file.
+You can also pass a JSON string containing tool definitions directly:
 
 ```json
 {
@@ -154,9 +152,9 @@ You can also pass a JSON string containing the tool definitions directly to the 
 }
 ```
 
-## Configuration Format
+## 📋 Configuration Format
 
-Configuration can be provided either as a YAML file or a JSON string. The format supports both top-level tools and organized toolsets.
+Configuration can be provided as either a YAML file or a JSON string. The format supports both top-level tools and organized toolsets.
 
 ### Basic Structure
 
@@ -191,40 +189,41 @@ toolsets:
 
 Each tool requires the following configuration:
 
-- **description**: Human-readable description of the tool
-- **execution**: Command template with parameter placeholders (`<<parameter>>`)
-- **parameters**: Definitions for each parameter the tool accepts
+| Component | Description |
+|-----------|-------------|
+| **description** | Human-readable description of the tool with examples |
+| **execution** | Command template with parameter placeholders (`<<parameter>>`) |
+| **parameters** | Definitions for each parameter the tool accepts |
 
 Parameters are specified in the form `<<parameter_name>>` in the command template and will be replaced with the actual parameter values when executed.
 
-## Default Tools
+## 🧰 Default Tools
 
-The following tools are included in the default configuration:
+The default configuration includes these powerful CLI tools:
 
-- `get-directory-tree`: Generate a directory tree with standard exclusions
-- `find-files`: Locate files by name, pattern, type, and other criteria
-- `find-text-patterns`: Search for text patterns in files with context and filtering
-- `extract-file-text`: Display file contents with options for line numbers or filtering
-- `extract-code-info`: Analyze code files to extract functions, classes, imports, and TODOs
-- `edit-file`: Modify files with precise control (insert, replace, delete)
-- `create-file`: Create new files with specified content
-- `create-directory`: Create new directories or directory structures
-- `web-scraper`: Fetch webpages and convert to clean, readable text
+| Tool | Description |
+|------|-------------|
+| **get-directory-tree** | Generate a directory tree with standard exclusions and gitignore support |
+| **find-files** | Locate files by name, pattern, type, size, date, or other criteria |
+| **find-text-patterns** | Search for text patterns in files with context and filtering |
+| **extract-file-text** | Display file contents with options for line numbers or filtering |
+| **extract-code-info** | Analyze code files to extract functions, classes, imports, and TODOs |
+| **edit-file** | Modify files with precise control (insert, replace, delete) |
+| **create-file** | Create new files with specified content |
+| **create-directory** | Create new directories or directory structures |
+| **web-scraper** | Fetch webpages and convert to clean, readable text |
 
 ### Default Tool Dependencies
 
-For the default tools to work correctly, the following dependencies are required:
+For the default tools to work correctly, install the following dependencies:
 
-**Mac:**
+**macOS:**
 ```bash
-brew install tree
-brew install lynx
+brew install tree  # Required for get-directory-tree
+brew install lynx  # Required for web-scraper
 ```
 
-- `tree` - Used by `get-directory-tree`
-- `lynx` - Used by `web-scraper`
-
-## Usage Examples
+## 💻 Usage Examples
 
 ### Python Client API
 
@@ -255,7 +254,7 @@ async with stdio_client(server_params) as (read, write):
         print(dir_tree_result.content[0].text)
 ```
 
-### Defining Custom Tools
+### Defining Custom Tools in Python
 
 ```python
 import json
@@ -283,7 +282,7 @@ toolset_config = {
 # Start server with custom configuration
 server_params = StdioServerParameters(
     command='python',
-    args=['-m', 'mcp_this', '--config_value', json.dumps(toolset_config)],
+    args=['-m', 'mcp_this', '--tools', json.dumps(toolset_config)],
 )
 
 async with stdio_client(server_params) as (read, write):
@@ -298,16 +297,18 @@ async with stdio_client(server_params) as (read, write):
         print(result.content[0].text)
 ```
 
-## Configuration Methods
+## ⚙️ Configuration Methods
 
 You can provide configuration in several ways:
 
-1. **Config File Path**: `--tools_path /path/to/config.yaml`
-2. **Config Value String**: `--config_value '{"tools": {...}}'`
-3. **Environment Variable**: `MCP_THIS_CONFIG_PATH=/path/to/config.yaml`
-4. **Default Config**: If no configuration is provided, the default configuration is used
+| Method | Example |
+|--------|---------|
+| **Config File Path** | `--tools_path /path/to/config.yaml` |
+| **Config Value String** | `--tools '{"tools": {...}}'` |
+| **Environment Variable** | `MCP_THIS_CONFIG_PATH=/path/to/config.yaml` |
+| **Default Config** | If no configuration is provided, the default tools are used |
 
-## Development
+## 🛠️ Development
 
 ### Setup Development Environment
 
@@ -356,6 +357,6 @@ uv add <package>
 uv add <package> --group dev
 ```
 
-## License
+## 📜 License
 
 [Apache License 2.0](LICENSE)
