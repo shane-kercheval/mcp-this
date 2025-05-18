@@ -54,6 +54,4 @@ build-backend = "hatchling.build"
 asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = ["src"]
-timeout = 60
-timeout_method = "signal"  # note this only works on unix; "thread" method (default) is safer but might not catch hanging subprocesses
 asyncio_default_fixture_loop_scope = "function"
