@@ -1,5 +1,6 @@
 """Unit tests for the default configuration tools."""
 import pytest
+import aiofiles
 import tempfile
 import os
 import shutil
@@ -1696,7 +1697,7 @@ class TestCreateFile:
             # Verify required parameters
             assert "required" in create_file_tool.inputSchema
             assert "path" in create_file_tool.inputSchema["required"]
-            assert "content" in create_file_tool.inputSchema["required"]
+            assert "content" not in create_file_tool.inputSchema["required"]
 
     async def test_create_simple_file(
         self,
@@ -1733,9 +1734,9 @@ class TestCreateFile:
             # Verify the file exists
             assert os.path.exists(test_file)
             # Read file and strip any trailing whitespace/newlines for comparison
-            with open(test_file) as f:  # noqa: ASYNC230
-                content = f.read().strip()
-                assert content == file_content.strip()
+            async with aiofiles.open(test_file) as f:
+                content = await f.read()
+                assert content == file_content
 
     async def test_create_file_with_nested_directory(
         self,
@@ -1774,9 +1775,9 @@ class TestCreateFile:
             assert os.path.exists(nested_dir)
             assert os.path.exists(test_file)
             # Read file and strip any trailing whitespace/newlines for comparison
-            with open(test_file) as f:  # noqa: ASYNC230
-                content = f.read().strip()
-                assert content == file_content.strip()
+            async with aiofiles.open(test_file) as f:
+                content = await f.read()
+                assert content == file_content
 
     async def test_create_file_that_already_exists(
         self,
@@ -1815,6 +1816,77 @@ class TestCreateFile:
             with open(existing_file) as f:  # noqa: ASYNC230
                 content = f.read()
                 assert content == "Original content"
+
+    async def test_create_file_with_multiline_content(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test creating a file with multiline content preserves newlines."""
+        test_file = os.path.join(temp_test_directory, "multiline.txt")
+        file_content = "Line 1\nLine 2\nLine 3\n"  # Note the newlines
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            result = await session.call_tool(
+                "create-file",
+                {
+                    "path": test_file,
+                    "content": file_content,
+                },
+            )
+
+            assert result.content
+            result_text = result.content[0].text
+            assert 'Error' not in result_text
+            assert "File created successfully" in result_text
+
+            # Verify exact content match (no stripping!)
+            async with aiofiles.open(test_file) as f:
+                actual_content = await f.read()
+                assert actual_content == file_content  # Exact match including newlines
+
+            # Also verify line count
+            async with aiofiles.open(test_file) as f:
+                lines = await f.readlines()
+                assert len(lines) == 3  # Should be 3 separate lines
+                assert lines[0] == "Line 1\n"
+                assert lines[1] == "Line 2\n"
+                assert lines[2] == "Line 3\n"
+
+    async def test_create_empty_file(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test creating an empty file."""
+        test_file = os.path.join(temp_test_directory, "empty.txt")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            result = await session.call_tool(
+                "create-file",
+                {
+                    "path": test_file,
+                    # No content parameter
+                },
+            )
+
+            assert result.content
+            result_text = result.content[0].text
+            assert 'Error' not in result_text
+
+            # Verify file exists and is empty
+            assert os.path.exists(test_file)
+            async with aiofiles.open(test_file) as f:
+                content = await f.read()
+                assert content == ""
 
 
 @pytest.mark.asyncio

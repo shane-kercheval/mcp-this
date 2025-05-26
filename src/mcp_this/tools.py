@@ -113,23 +113,30 @@ def build_command(command_template: str, parameters: dict[str, str]) -> str:
         Example: "tail -n 10 -f \"/var/log/syslog\""
     """
     result = command_template
+    parameters = {k: v for k, v in parameters.items() if v is not None and v != ""}
 
-    # Replace each parameter placeholder with its value
-    for param_name, param_value in parameters.items():
+    # Step 1: Remove placeholders for parameters that don't exist or are empty
+    all_placeholders = re.findall(r'<<(\w+)>>', result)
+    for param_name in all_placeholders:
         placeholder = f"<<{param_name}>>"
-        if param_value is not None and param_value != "":
-            result = result.replace(placeholder, str(param_value))
-        else:
-            # Remove placeholder if no value provided
+        if param_name not in parameters:
             result = result.replace(placeholder, "")
 
-    # Find any remaining placeholders (parameters not in the dictionary)
-    remaining_placeholders = re.findall(r'<<\w+>>', result)
-    # Remove each remaining placeholder
-    for placeholder in remaining_placeholders:
-        result = result.replace(placeholder, "")
-    # Clean up multiple spaces
-    return " ".join(result.split())
+    # Step 2: Clean up command structure whitespace
+    # (No content is in the string yet, so this is safe)
+    lines = [line.strip() for line in result.split('\n') if line.strip()]
+    result = ' '.join(lines)
+    # Normalize multiple spaces to a single space
+    result = " ".join(result.split())
+
+    # Step 3: Now substitute actual parameter values (preserving their formatting)
+    for param_name, param_value in parameters.items():
+        placeholder = f"<<{param_name}>>"
+        if placeholder not in result:
+            raise ValueError(f"Placeholder '{placeholder}' not found in command template.")
+        result = result.replace(placeholder, str(param_value))
+
+    return result
 
 
 async def execute_command(cmd: str) -> str:

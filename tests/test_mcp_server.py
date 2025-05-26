@@ -142,13 +142,6 @@ class TestBuildCommand:
         result = build_command(template, params)
         assert result == "echo Hello"
 
-    def test_extra_parameters(self):
-        """Test handling of extra parameters not used in template."""
-        template = "echo <<message>>"
-        params = {"message": "Hello", "unused": "World"}
-        result = build_command(template, params)
-        assert result == "echo Hello"
-
     def test_multiple_spaces(self):
         """Test normalization of multiple spaces."""
         template = "echo   <<message>>    <<suffix>>"

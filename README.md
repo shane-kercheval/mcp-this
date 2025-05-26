@@ -209,6 +209,10 @@ When using the tool in Claude Desktop, you will see something like:
 
 <img src="./documentation/images/custom-tool-example.png" alt="Example of using the custom time tool" width="500">
 
+#### NOTE
+
+- Avoid using `command: |` when defining commands in YAML. This format preserves line breaks, which can interfere with how commands are processed in tools.py. Instead, use `command: >-` to ensure proper formatting of multi-line commands.
+
 ### Configuring with a JSON String
 
 You can also pass a JSON string containing tool definitions directly:
