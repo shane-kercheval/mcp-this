@@ -1,0 +1,119 @@
+tools:
+  create-file:
+    description: |
+      Create a new file with specified content
+      
+      Examples:
+        - create_file(path="/path/to/new_file.py", content="def main():\n    print('Hello world')\n\nif __name__ == '__main__':\n    main()")  # create a Python script
+        - create_file(path="/path/to/config.json", content="{\n  \"name\": \"project\",\n  \"version\": \"1.0.0\"\n}")  # create a JSON config file
+        - create_file(path="/path/to/.gitignore", content="node_modules/\n*.log\n.DS_Store")  # create a gitignore file
+        - create_file(path="/path/to/empty_file.txt")  # create an empty file
+    execution:
+      command: >-
+        if [ -f "<<path>>" ]; then
+          echo "Error: File '<<path>>' already exists. Use edit-file tool to modify existing files.";
+          exit 1;
+        else
+          mkdir -p "$(dirname "<<path>>")" &&
+          if [ -n "<<content>>" ]; then
+            printf '%s' "<<content>>" > "<<path>>";
+          else
+            touch "<<path>>";
+          fi &&
+          echo "File created successfully: <<path>>" &&
+          ls -la "<<path>>";
+        fi
+    parameters:
+      path:
+        description: Path where the file should be created (parent directories will be created if needed)
+        required: true
+      content:
+        description: Content to write to the file (optional - creates empty file if not provided)
+        required: false
+
+  edit-file:
+    description: |
+      Modify a file with precise control - insert, replace, or delete content
+      
+      Examples:
+        - edit_file(file="/path/to/script.py", operation="insert_after", anchor="def main():", content="    logger.info('Function started')")  # add code after a function definition
+        - edit_file(file="/path/to/config.json", operation="replace", anchor="version", content="  \"version\": \"2.0\",")  # update a specific property
+        - edit_file(file="/path/to/script.py", operation="delete", anchor="# TODO: Remove this later")  # delete TODO comments
+        - edit_file(file="/path/to/file.txt", operation="insert_before", anchor="class User", content="# User class definition")  # add comment before class
+        - edit_file(file="/path/to/file.py", operation="replace_range", start_line="5", end_line="10", content="# This content replaces lines 5-10")  # replace a range of lines
+    execution:
+      command: >-
+        case "<<operation>>" in
+          "insert_after")
+            sed -i.bak "/<<anchor>>/a\\
+        <<content>>" '<<file>>';
+            echo "Inserted content after pattern '<<anchor>>'";
+            ;;
+          "insert_before")
+            sed -i.bak "/<<anchor>>/i\\
+        <<content>>" '<<file>>';
+            echo "Inserted content before pattern '<<anchor>>'";
+            ;;
+          "replace")
+            sed -i.bak "s/<<anchor>>.*$/<<content>>/" '<<file>>';
+            echo "Replaced line(s) matching '<<anchor>>'";
+            ;;
+          "delete")
+            sed -i.bak "/<<anchor>>/d" '<<file>>';
+            echo "Deleted line(s) matching '<<anchor>>'";
+            ;;
+          "replace_range")
+            sed -i.bak "<<start_line>>,<<end_line>>c\\
+        <<content>>" '<<file>>';
+            echo "Replaced lines <<start_line>>-<<end_line>>";
+            ;;
+          *)
+            echo "Unknown operation: <<operation>>";
+            echo "Available operations: insert_after, insert_before, replace, delete, replace_range";
+            exit 1;
+            ;;
+        esac;
+        if [ $? -eq 0 ]; then
+          rm -f "<<file>>.bak";
+          echo "File modified successfully:";
+          cat '<<file>>';
+        else
+          echo "Error modifying file";
+          exit 1;
+        fi
+    parameters:
+      file:
+        description: Path to the file to modify
+        required: true
+      operation:
+        description: "Type of modification: insert_after, insert_before, replace, delete, or replace_range"
+        required: true
+      anchor:
+        description: Pattern or text to match in the file (not needed for replace_range)
+        required: false
+      content:
+        description: Content to insert or use as replacement (not needed for delete)
+        required: false
+      start_line:
+        description: Starting line number (only for replace_range operation)
+        required: false
+      end_line:
+        description: Ending line number (only for replace_range operation)
+        required: false
+
+  create-directory:
+    description: |
+      Create a new directory or directory structure
+      
+      Examples:
+        - create_directory(path="/path/to/new_directory")  # create a single directory
+        - create_directory(path="/path/to/nested/directory/structure")  # create nested directories
+    execution:
+      command: >-
+        mkdir -p "<<path>>" &&
+        echo "Directory created successfully: <<path>>" &&
+        ls -la "<<path>>"
+    parameters:
+      path:
+        description: Path where the directory should be created (parent directories will be created if needed)
+        required: true

@@ -33,6 +33,22 @@ def find_default_config() -> str | None:
             return str(location)
     return None
 
+def get_preset_config(preset_name: str) -> str | None:
+    """
+    Get the path to a built-in preset configuration.
+
+    Args:
+        preset_name: Name of the preset (e.g., 'default', 'editing')
+
+    Returns:
+        Optional[str]: Path to the preset configuration file, or None if not found
+    """
+    package_dir = pathlib.Path(__file__).parent
+    preset_path = package_dir / "configs" / f"{preset_name}.yaml"
+    if preset_path.exists():
+        return str(preset_path)
+    return None
+
 def main() -> None:
     """Run the MCP server with the specified configuration."""
     parser = argparse.ArgumentParser(description="Dynamic CLI Tools MCP Server")
@@ -48,6 +64,11 @@ def main() -> None:
         "--tools",
         type=str,
         help="JSON-structured configuration string",
+    )
+    config_group.add_argument(
+        "--preset",
+        type=str,
+        help="Built-in preset configuration (e.g., 'default', 'editing')",
     )
     parser.add_argument(
         "--transport",
@@ -67,6 +88,11 @@ def main() -> None:
         tools_path = args.tools_path
     elif args.tools:
         tools = args.tools
+    elif args.preset:
+        tools_path = get_preset_config(args.preset)
+        if not tools_path:
+            print(f"Error: Preset '{args.preset}' not found.")
+            sys.exit(1)
     # Then check environment variable
     elif os.environ.get("MCP_THIS_CONFIG_PATH"):
         tools_path = os.environ.get("MCP_THIS_CONFIG_PATH")
@@ -78,8 +104,9 @@ def main() -> None:
         print("Error: No configuration found. Please provide one using:")
         print("  1. --tools_path argument")
         print("  2. --tools argument")
-        print("  3. MCP_THIS_CONFIG_PATH environment variable")
-        print("  4. Place default.yaml in the package configs directory")
+        print("  3. --preset argument (e.g., 'editing')")
+        print("  4. MCP_THIS_CONFIG_PATH environment variable")
+        print("  5. Place default.yaml in the package configs directory")
         sys.exit(1)
 
     try:

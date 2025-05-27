@@ -92,9 +92,17 @@ The simplest way to use the server is via `uvx`. This command lets you run Pytho
 ### Configuration
 
 The MCP Server can be configured to use:
-- Custom tools defined in a YAML file via the `--tools_path` command
-- Custom tools via a JSON string with the `--tools` command
-- Default tools from `./src/mcp_this/configs/default.yaml` if no configuration is provided
+- **Built-in presets** via the `--preset` command (e.g., `--preset editing`)
+- **Custom tools** defined in a YAML file via the `--tools_path` command
+- **Custom tools** via a JSON string with the `--tools` command
+- **Default tools** from the built-in `default` preset if no configuration is provided
+
+#### Built-in Presets
+
+| Preset | Description | Usage |
+|--------|-------------|-------|
+| **default** | Safe, read-only tools for analysis and information gathering | Used automatically when no config specified |
+| **editing** | File and directory editing tools for development workflows | `--preset editing` |
 
 ## Claude Desktop Integration
 
@@ -104,11 +112,11 @@ The MCP Server can be configured to use:
 2. Navigate to `Settings -> Developer` and click "Edit Config"
 3. Open `claude_desktop_config.json` in your editor of choice
 
-### Using Default Tools
+### Using Built-in Presets
 
-When neither `--tools` nor `--tools_path` options are used, the server will use the default tools defined in `./src/mcp_this/configs/default.yaml`.
+#### Default Tools (Safe, Read-Only)
 
-**Step 1:** Replace/modify contents of `claude_desktop_config.json` with:
+When no configuration is specified, the server uses safe, read-only tools for analysis:
 
 ```json
 {
@@ -121,17 +129,55 @@ When neither `--tools` nor `--tools_path` options are used, the server will use 
 }
 ```
 
-**Step 1.1:** 
+> **Note:** Some default tools require additional dependencies. See [Default Tool Dependencies](#default-tool-dependencies) for installation instructions.
 
-A few of the default tools use commands that may not be installed on your machine (e.g. `tree`, `lynx`). See [Default Tools](#default-tools) and [Default Tool Dependencies](#default-tool-dependencies) sections below.
+#### Editing Tools (File Operations)
 
-**Step 2:** Restart Claude Desktop
+For development workflows requiring file editing capabilities:
 
-You should now see the `mcp-this-default` MCP server:
+```json
+{
+  "mcpServers": {
+    "mcp-this-editing": {
+      "command": "uvx",
+      "args": ["mcp-this", "--preset", "editing"]
+    }
+  }
+}
+```
+
+#### Both Presets Together
+
+You can run both presets simultaneously for maximum functionality:
+
+```json
+{
+  "mcpServers": {
+    "mcp-this-default": {
+      "command": "uvx",
+      "args": ["mcp-this"]
+    },
+    "mcp-this-editing": {
+      "command": "uvx",
+      "args": ["mcp-this", "--preset", "editing"]
+    }
+  }
+}
+```
+
+> **Note:** The default preset requires additional dependencies for some tools. See [Default Tool Dependencies](#default-tool-dependencies) for installation instructions.
+
+**Setup Notes:** 
+
+A few of the default tools use commands that may not be installed on your machine (e.g. `tree`, `lynx`). See [Default Tool Dependencies](#default-tool-dependencies) for installation instructions.
+
+**Restart Claude Desktop** after updating your configuration.
+
+You should now see your configured MCP server(s):
 
 <img src="./documentation/images/server-default.png" alt="Claude Desktop showing mcp-this-default server" width="400">
 
-**Step 3:** View and enable the tools by clicking on the server:
+**View and enable tools** by clicking on the server:
 
 <img src="./documentation/images/default-tools.png" alt="Default tools available in mcp-this" width="350">
 
@@ -274,9 +320,11 @@ Parameters are specified in the form `<<parameter_name>>` in the command templat
 
 ---
 
-## Default Tools
+## Built-in Tools
 
-The default configuration includes these powerful CLI tools:
+### Default Preset Tools (Safe, Read-Only)
+
+The default preset provides safe, read-only tools for analysis and information gathering:
 
 | Tool | Description |
 |------|-------------|
@@ -285,10 +333,19 @@ The default configuration includes these powerful CLI tools:
 | **find-text-patterns** | Search for text patterns in files with context and filtering |
 | **extract-file-text** | Display file contents with options for line numbers or filtering |
 | **extract-code-info** | Analyze code files to extract functions, classes, imports, and TODOs |
-| **edit-file** | Modify files with precise control (insert, replace, delete) |
-| **create-file** | Create new files with specified content |
-| **create-directory** | Create new directories or directory structures |
 | **web-scraper** | Fetch webpages and convert to clean, readable text |
+
+> **Note:** Some tools require additional dependencies. See [Default Tool Dependencies](#default-tool-dependencies) for installation instructions.
+
+### Editing Preset Tools (File Operations)
+
+The editing preset provides powerful file and directory manipulation tools:
+
+| Tool | Description |
+|------|-------------|
+| **create-file** | Create new files with specified content |
+| **edit-file** | Modify files with precise control (insert, replace, delete) |
+| **create-directory** | Create new directories or directory structures |
 
 ### Default Tool Dependencies
 
@@ -315,6 +372,8 @@ server_params = StdioServerParameters(
     command='python',
     args=['-m', 'mcp_this'],
 )
+# Note: Some default tools require additional dependencies (tree, lynx)
+# See Default Tool Dependencies section for installation instructions
 
 async with stdio_client(server_params) as (read, write):
     async with ClientSession(read, write) as session:
@@ -382,10 +441,11 @@ You can provide configuration in several ways:
 
 | Method | Example |
 |--------|---------|
+| **Built-in Preset** | `--preset editing` |
 | **Config File Path** | `--tools_path /path/to/config.yaml` |
 | **Config Value String** | `--tools '{"tools": {...}}'` |
 | **Environment Variable** | `MCP_THIS_CONFIG_PATH=/path/to/config.yaml` |
-| **Default Config** | If no configuration is provided, the default tools are used |
+| **Default Config** | If no configuration is provided, the default preset is used |
 
 ## Development
 
