@@ -131,7 +131,9 @@ When no configuration is specified, the server uses safe, read-only tools for an
 
 > **Note:** Some default tools require additional dependencies. See [Default Tool Dependencies](#default-tool-dependencies) for installation instructions.
 
-#### Editing Tools (File Operations)
+#### Editing Tools (File Operations) - ALPHA
+
+> **Alpha Notice:** The editing tools are in an early development stage and may contain bugs or unexpected behavior. Use with caution in production environments.
 
 For development workflows requiring file editing capabilities:
 
