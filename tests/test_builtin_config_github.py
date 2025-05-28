@@ -1,4 +1,5 @@
 """Unit tests for the GitHub configuration tools."""
+import os
 import pytest
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -13,6 +14,7 @@ def server_params() -> StdioServerParameters:
     )
 
 
+@pytest.mark.skipif(os.getenv("CI") == "true", reason="GitHub CLI not available in CI")
 @pytest.mark.asyncio
 class TestGetGithubPullRequestInfo:
     """Test the get-github-pull-request-info tool from the GitHub configuration."""
