@@ -92,7 +92,7 @@ The simplest way to use the server is via `uvx`. This command lets you run Pytho
 ### Configuration
 
 The MCP Server can be configured to use:
-- **Built-in presets** via the `--preset` command (e.g., `--preset editing`)
+- **Built-in presets** via the `--preset` command (e.g., `--preset default` or `--preset editing`)
 - **Custom tools** defined in a YAML file via the `--tools_path` command
 - **Custom tools** via a JSON string with the `--tools` command
 - **Default tools** from the built-in `default` preset if no configuration is provided
@@ -101,7 +101,7 @@ The MCP Server can be configured to use:
 
 | Preset | Description | Usage |
 |--------|-------------|-------|
-| **default** | Safe, read-only tools for analysis and information gathering | Used automatically when no config specified |
+| **default** | Safe, read-only tools for analysis and information gathering | Used automatically when no config specified, or explicitly with `--preset default` |
 | **editing** | File and directory editing tools for development workflows | `--preset editing` |
 
 ## Claude Desktop Integration
