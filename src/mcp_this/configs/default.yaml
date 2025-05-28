@@ -121,7 +121,7 @@ tools:
           echo "Directory does not exist: <<directory>>"; 
         else
           cd '<<directory>>' &&
-        grep -r -n --color=never '<<pattern>>' . <<arguments>>
+        grep -r -n --color=never <<arguments>> '<<pattern>>' .
         --exclude-dir=.git 
         --exclude-dir=.claude 
         --exclude-dir=.env 

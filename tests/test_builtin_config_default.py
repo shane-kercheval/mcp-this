@@ -1341,6 +1341,57 @@ Line 5 no match
             # Should get the directory not found message
             assert "Directory does not exist: /path/that/does/not/exist" in result_text
 
+    async def test_gitignore_pattern_with_context_args(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        r"""
+        Test the find-text-patterns tool with specific case that was causing hangs.
+
+        This test reproduces the exact case mentioned in the issue:
+        pattern: "\.gitignore", arguments: "-A 5 -B 5"
+        """
+        # Create a test file that mentions .gitignore
+        test_file = os.path.join(temp_test_directory, "config_info.txt")
+        with open(test_file, "w") as f:  # noqa: ASYNC230
+            f.write("""Configuration files:
+Line before gitignore mention
+The .gitignore file controls what files are ignored
+Line after gitignore mention
+Another line after
+Final line
+""")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # This was the exact case that was hanging due to incorrect argument order
+            result = await session.call_tool(
+                "find-text-patterns",
+                {
+                    "pattern": "\\.gitignore",
+                    "directory": temp_test_directory,
+                    "arguments": "-A 5 -B 5",
+                },
+            )
+
+            # Verify we got some output and it didn't hang
+            assert result.content
+            result_text = result.content[0].text
+            assert 'Error' not in result_text
+
+            # Check that the pattern is found
+            assert ".gitignore file controls" in result_text
+
+            # Check that context lines are included (5 before and 5 after)
+            assert "Line before gitignore mention" in result_text  # Before
+            assert "Line after gitignore mention" in result_text   # After
+            assert "Another line after" in result_text            # More after
+            assert "Final line" in result_text                    # Even more after
+
 
 @pytest.mark.asyncio
 class TestExtractFileText:
