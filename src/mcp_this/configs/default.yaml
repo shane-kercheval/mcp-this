@@ -6,19 +6,21 @@ tools:
       Examples:
         - get_directory_tree(directory="/path/to/project")  # basic usage with default exclusions
         - get_directory_tree(directory="/path/to/project", format_args="-L 3")  # limit depth to 3 levels
-        - get_directory_tree(directory="/home/user/code", custom_excludes="|dist|build", format_args="-C --dirsfirst")  # custom exclusions with colorized output and directories first
+        - get_directory_tree(directory="/home/user/code", custom_excludes="dist|build", format_args="-C --dirsfirst")  # multiple custom exclusions with colorized output and directories first
+        - get_directory_tree(directory="/path/to/project", custom_excludes="target")  # single custom exclusion
     execution:
       command: >-
         tree '<<directory>>'
         -a --gitignore
-        -I ".git|.claude|.env|.venv|env|node_modules|__pycache__|.DS_Store|*.pyc<<custom_excludes>>"
+        -I ".git|.claude|.env|.venv|env|node_modules|__pycache__|.DS_Store|*.pyc"
+        -I "<<custom_excludes>>"
         <<format_args>>
     parameters:
       directory:
         description: Directory to generate tree for (quotes are handled automatically in the command)
         required: true
       custom_excludes:
-        description: Additional patterns to exclude (begin with | e.g., "|build|dist"). Probably not needed if there is a .gitignore file.
+        description: Additional patterns to exclude. Use pipe-separated values for multiple exclusions (e.g., "build|dist|target" or just "build" for single exclusion). Probably not needed if there is a .gitignore file.
         required: false
       format_args:
         description: Additional formatting arguments (e.g., "-L 3 -C --dirsfirst")
