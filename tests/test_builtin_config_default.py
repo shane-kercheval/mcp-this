@@ -147,7 +147,7 @@ class TestGetDirectoryTree:
                 {
                     "directory": temp_test_directory,
                     # Exclude all .txt files and hidden files/dirs
-                    "custom_excludes": "|*.txt|.hidden*",
+                    "custom_excludes": "*.txt|.hidden*",
                 },
             )
 
@@ -275,7 +275,7 @@ class TestGetDirectoryTree:
                 "get-directory-tree",
                 {
                     "directory": temp_test_directory,
-                    "custom_excludes": "|*.py",  # Exclude Python files
+                    "custom_excludes": "*.py",  # Exclude Python files
                     "format_args": "-L 2 --dirsfirst",  # Limit depth and list dirs first
                 },
             )
@@ -413,11 +413,15 @@ class TestFindFiles:
             # Check tool schema has the expected parameters
             assert "directory" in find_files_tool.inputSchema["properties"]
             assert "arguments" in find_files_tool.inputSchema["properties"]
+            assert "exclude_paths" in find_files_tool.inputSchema["properties"]
+            assert "exclude_files" in find_files_tool.inputSchema["properties"]
 
             # Verify only 'directory' is required
             assert "required" in find_files_tool.inputSchema
             assert "directory" in find_files_tool.inputSchema["required"]
             assert "arguments" not in find_files_tool.inputSchema["required"]
+            assert "exclude_paths" not in find_files_tool.inputSchema["required"]
+            assert "exclude_files" not in find_files_tool.inputSchema["required"]
 
     async def test_basic_file_finding(
         self,
@@ -658,6 +662,168 @@ class TestFindFiles:
             # Check that the result is empty (or contains a message about no results)
             assert result_text.strip() == "" or "No such file or directory" in result_text
 
+    async def test_gitignore_support(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test that find-files respects .gitignore files."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to find all files
+            result = await session.call_tool(
+                "find-files",
+                {"directory": temp_test_directory},
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+            assert 'Error' not in result_text
+
+            # Files ignored by .gitignore should not appear
+            assert "ignored_file.pyc" not in result_text  # *.pyc pattern
+            assert "subfolder2/ignored.txt" not in result_text  # subfolder2/ pattern
+
+            # Regular files should still appear
+            assert "file1.txt" in result_text
+            assert "file2.py" in result_text
+
+    async def test_basic_exclusions(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test that find-files excludes basic hardcoded patterns."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool to find all files
+            result = await session.call_tool(
+                "find-files",
+                {"directory": temp_test_directory},
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+            assert 'Error' not in result_text
+
+            # Files matching hardcoded exclusions should not appear
+            assert "ignored_file.pyc" not in result_text  # *.pyc exclusion
+            assert "__pycache__" not in result_text  # __pycache__ exclusion
+
+            # Regular files should still appear
+            assert "file1.txt" in result_text
+            assert "file2.py" in result_text
+
+    async def test_exclude_paths_parameter(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the find-files tool with exclude_paths parameter."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with path exclusions
+            result = await session.call_tool(
+                "find-files",
+                {
+                    "directory": temp_test_directory,
+                    "exclude_paths": "./subfolder1/*",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+            assert 'Error' not in result_text
+
+            # Files in subfolder1 should be excluded
+            assert "subfolder1/file3.txt" not in result_text
+            assert "subfolder1/file4.py" not in result_text
+
+            # Root level files should still appear
+            assert "file1.txt" in result_text
+            assert "file2.py" in result_text
+
+    async def test_exclude_files_parameter(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the find-files tool with exclude_files parameter."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with file exclusions
+            result = await session.call_tool(
+                "find-files",
+                {
+                    "directory": temp_test_directory,
+                    "exclude_files": "*.txt",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+            assert 'Error' not in result_text
+
+            # .txt files should be excluded
+            assert "file1.txt" not in result_text
+            assert "subfolder1/file3.txt" not in result_text
+
+            # .py files should still appear
+            assert "file2.py" in result_text
+            assert "subfolder1/file4.py" in result_text
+
+    async def test_multiple_excludes(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the find-files tool with multiple exclude patterns."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with multiple exclusions
+            result = await session.call_tool(
+                "find-files",
+                {
+                    "directory": temp_test_directory,
+                    "exclude_paths": "./subfolder1/*|./.hidden_folder/*",
+                    "exclude_files": "*.txt|.hidden*",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+            assert 'Error' not in result_text
+
+            # Files matching exclude patterns should not appear
+            assert "subfolder1/file3.txt" not in result_text  # path exclusion
+            assert "subfolder1/file4.py" not in result_text  # path exclusion
+            assert ".hidden_file" not in result_text  # file exclusion
+            assert ".hidden_folder/hidden_file.txt" not in result_text  # path exclusion
+            assert "file1.txt" not in result_text  # file exclusion
+
+            # Only Python files not in excluded paths should appear
+            assert "file2.py" in result_text
+
 
 @pytest.mark.asyncio
 class TestFindTextPatterns:
@@ -686,11 +852,17 @@ class TestFindTextPatterns:
             # Check tool schema has the expected parameters
             assert "pattern" in find_text_patterns_tool.inputSchema["properties"]
             assert "arguments" in find_text_patterns_tool.inputSchema["properties"]
+            assert "directory" in find_text_patterns_tool.inputSchema["properties"]
+            assert "exclude_paths" in find_text_patterns_tool.inputSchema["properties"]
+            assert "exclude_files" in find_text_patterns_tool.inputSchema["properties"]
 
-            # Verify only 'pattern' is required
+            # Verify both 'pattern' and 'directory' are required
             assert "required" in find_text_patterns_tool.inputSchema
             assert "pattern" in find_text_patterns_tool.inputSchema["required"]
+            assert "directory" in find_text_patterns_tool.inputSchema["required"]
             assert "arguments" not in find_text_patterns_tool.inputSchema["required"]
+            assert "exclude_paths" not in find_text_patterns_tool.inputSchema["required"]
+            assert "exclude_files" not in find_text_patterns_tool.inputSchema["required"]
 
     async def test_basic_text_search(
         self,
@@ -723,7 +895,7 @@ class TestFindTextPatterns:
                 "find-text-patterns",
                 {
                     "pattern": "apple",
-                    "arguments": temp_test_directory,
+                    "directory": temp_test_directory,
                 },
             )
 
@@ -779,7 +951,8 @@ class TestClass:
                 "find-text-patterns",
                 {
                     "pattern": "import.*",
-                    "arguments": python_file,
+                    "directory": os.path.dirname(python_file),
+                    "arguments": f"--include='{os.path.basename(python_file)}'",
                 },
             )
 
@@ -799,7 +972,8 @@ class TestClass:
                 "find-text-patterns",
                 {
                     "pattern": "def function[0-9]",
-                    "arguments": python_file,
+                    "directory": os.path.dirname(python_file),
+                    "arguments": f"--include='{os.path.basename(python_file)}'",
                 },
             )
 
@@ -840,7 +1014,8 @@ Line 8
                 "find-text-patterns",
                 {
                     "pattern": "search term",
-                    "arguments": f"-B 1 -A 2 {test_file}",
+                    "directory": os.path.dirname(test_file),
+                    "arguments": f"-B 1 -A 2 --include='{os.path.basename(test_file)}'",
                 },
             )
 
@@ -889,7 +1064,8 @@ Line 8
                 "find-text-patterns",
                 {
                     "pattern": "search pattern",
-                    "arguments": f"{temp_test_directory} --include='*.py'",
+                    "directory": temp_test_directory,
+                    "arguments": "--include='*.py'",
                 },
             )
 
@@ -908,7 +1084,8 @@ Line 8
                 "find-text-patterns",
                 {
                     "pattern": "search pattern",
-                    "arguments": f"{temp_test_directory} --include='*.py' --include='*.js'",
+                    "directory": temp_test_directory,
+                    "arguments": "--include='*.py' --include='*.js'",
                 },
             )
 
@@ -945,7 +1122,8 @@ This has Error with mixed case.
                 "find-text-patterns",
                 {
                     "pattern": "error",
-                    "arguments": test_file,
+                    "directory": os.path.dirname(test_file),
+                    "arguments": f"--include='{os.path.basename(test_file)}'",
                 },
             )
 
@@ -964,7 +1142,8 @@ This has Error with mixed case.
                 "find-text-patterns",
                 {
                     "pattern": "error",
-                    "arguments": f"-i {test_file}",
+                    "directory": os.path.dirname(test_file),
+                    "arguments": f"-i --include='{os.path.basename(test_file)}'",
                 },
             )
 
@@ -998,7 +1177,8 @@ This has Error with mixed case.
                 "find-text-patterns",
                 {
                     "pattern": "nonexistentpattern",
-                    "arguments": test_file,
+                    "directory": os.path.dirname(test_file),
+                    "arguments": f"--include='{os.path.basename(test_file)}'",
                 },
             )
 
@@ -1034,7 +1214,8 @@ Line 5 no match
                 "find-text-patterns",
                 {
                     "pattern": "pattern",
-                    "arguments": f"-n {test_file}",
+                    "directory": os.path.dirname(test_file),
+                    "arguments": f"-n --include='{os.path.basename(test_file)}'",
                 },
             )
 
@@ -1046,6 +1227,170 @@ Line 5 no match
             # Check that line numbers are included
             assert "2:" in result_text
             assert "4:" in result_text
+
+    async def test_exclude_paths_parameter(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the find-text-patterns tool with exclude_paths parameter."""
+        # Create test files in different folders
+        search_content = "search for this pattern"
+
+        # File in root
+        root_file = os.path.join(temp_test_directory, "root_file.txt")
+        with open(root_file, "w") as f:  # noqa: ASYNC230
+            f.write(search_content)
+
+        # File in subfolder1
+        sub_file = os.path.join(temp_test_directory, "subfolder1", "sub_file.txt")
+        with open(sub_file, "w") as f:  # noqa: ASYNC230
+            f.write(search_content)
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with path exclusions
+            result = await session.call_tool(
+                "find-text-patterns",
+                {
+                    "pattern": "search for this",
+                    "directory": temp_test_directory,
+                    "exclude_paths": "subfolder1",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+            assert 'Error' not in result_text
+
+            # Root file should be found
+            assert "root_file.txt" in result_text
+            # Subfolder1 file should be excluded
+            assert "subfolder1/sub_file.txt" not in result_text
+
+    async def test_exclude_files_parameter(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test the find-text-patterns tool with exclude_files parameter."""
+        # Create test files with different extensions
+        search_content = "find this text pattern"
+
+        py_file = os.path.join(temp_test_directory, "test_exclude.py")
+        txt_file = os.path.join(temp_test_directory, "test_exclude.txt")
+
+        with open(py_file, "w") as f:  # noqa: ASYNC230
+            f.write(search_content)
+        with open(txt_file, "w") as f:  # noqa: ASYNC230
+            f.write(search_content)
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with file exclusions
+            result = await session.call_tool(
+                "find-text-patterns",
+                {
+                    "pattern": "find this text",
+                    "directory": temp_test_directory,
+                    "exclude_files": "*.txt",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+            assert 'Error' not in result_text
+
+            # Python file should be found
+            assert "test_exclude.py" in result_text
+            # Text file should be excluded
+            assert "test_exclude.txt" not in result_text
+
+    async def test_non_existent_directory(
+        self,
+        server_params: StdioServerParameters,
+    ):
+        """Test the find-text-patterns tool with a non-existent directory."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Call the tool with a non-existent directory
+            result = await session.call_tool(
+                "find-text-patterns",
+                {
+                    "pattern": "test",
+                    "directory": "/path/that/does/not/exist",
+                },
+            )
+
+            # Verify we got some output
+            assert result.content
+            result_text = result.content[0].text
+            assert 'Error' not in result_text
+
+            # Should get the directory not found message
+            assert "Directory does not exist: /path/that/does/not/exist" in result_text
+
+    async def test_gitignore_pattern_with_context_args(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        r"""
+        Test the find-text-patterns tool with specific case that was causing hangs.
+
+        This test reproduces the exact case mentioned in the issue:
+        pattern: "\.gitignore", arguments: "-A 5 -B 5"
+        """
+        # Create a test file that mentions .gitignore
+        test_file = os.path.join(temp_test_directory, "config_info.txt")
+        with open(test_file, "w") as f:  # noqa: ASYNC230
+            f.write("""Configuration files:
+Line before gitignore mention
+The .gitignore file controls what files are ignored
+Line after gitignore mention
+Another line after
+Final line
+""")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # This was the exact case that was hanging due to incorrect argument order
+            result = await session.call_tool(
+                "find-text-patterns",
+                {
+                    "pattern": "\\.gitignore",
+                    "directory": temp_test_directory,
+                    "arguments": "-A 5 -B 5",
+                },
+            )
+
+            # Verify we got some output and it didn't hang
+            assert result.content
+            result_text = result.content[0].text
+            assert 'Error' not in result_text
+
+            # Check that the pattern is found
+            assert ".gitignore file controls" in result_text
+
+            # Check that context lines are included (5 before and 5 after)
+            assert "Line before gitignore mention" in result_text  # Before
+            assert "Line after gitignore mention" in result_text   # After
+            assert "Another line after" in result_text            # More after
+            assert "Final line" in result_text                    # Even more after
 
 
 @pytest.mark.asyncio
@@ -1320,11 +1665,15 @@ class TestExtractCodeInfo:
             # Check tool schema has the expected parameters
             assert "files" in extract_code_tool.inputSchema["properties"]
             assert "types" in extract_code_tool.inputSchema["properties"]
+            assert "exclude_paths" in extract_code_tool.inputSchema["properties"]
+            assert "exclude_files" in extract_code_tool.inputSchema["properties"]
 
-            # Verify both parameters are required
+            # Verify both 'files' and 'types' are required
             assert "required" in extract_code_tool.inputSchema
             assert "files" in extract_code_tool.inputSchema["required"]
             assert "types" in extract_code_tool.inputSchema["required"]
+            assert "exclude_paths" not in extract_code_tool.inputSchema["required"]
+            assert "exclude_files" not in extract_code_tool.inputSchema["required"]
 
     async def test_tool_can_be_called(
         self,
@@ -1346,7 +1695,7 @@ class TestExtractCodeInfo:
             result = await session.call_tool(
                 "extract-code-info",
                 {
-                    "files": test_file,
+                    "files": os.path.join(temp_test_directory, "test.py"),
                     "types": "functions",
                 },
             )
@@ -1377,7 +1726,7 @@ class TestExtractCodeInfo:
             result = await session.call_tool(
                 "extract-code-info",
                 {
-                    "files": test_file,
+                    "files": os.path.join(temp_test_directory, "multi_type.py"),
                     "types": "classes",
                 },
             )
@@ -1408,7 +1757,7 @@ class TestExtractCodeInfo:
             result = await session.call_tool(
                 "extract-code-info",
                 {
-                    "files": test_file,
+                    "files": os.path.join(temp_test_directory, "multi_param.py"),
                     "types": "functions,classes,imports,todos",
                 },
             )
@@ -1443,6 +1792,7 @@ class TestExtractCodeInfo:
             result_text = result.content[0].text
             assert isinstance(result_text, str)
             assert len(result_text) >= 0
+
 
 
 @pytest.mark.asyncio
