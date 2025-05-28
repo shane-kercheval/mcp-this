@@ -147,7 +147,7 @@ class TestGetDirectoryTree:
                 {
                     "directory": temp_test_directory,
                     # Exclude all .txt files and hidden files/dirs
-                    "custom_excludes": "|*.txt|.hidden*",
+                    "custom_excludes": "*.txt|.hidden*",
                 },
             )
 
@@ -275,7 +275,7 @@ class TestGetDirectoryTree:
                 "get-directory-tree",
                 {
                     "directory": temp_test_directory,
-                    "custom_excludes": "|*.py",  # Exclude Python files
+                    "custom_excludes": "*.py",  # Exclude Python files
                     "format_args": "-L 2 --dirsfirst",  # Limit depth and list dirs first
                 },
             )
@@ -1283,7 +1283,7 @@ Line 5 no match
 
         py_file = os.path.join(temp_test_directory, "test_exclude.py")
         txt_file = os.path.join(temp_test_directory, "test_exclude.txt")
-        
+
         with open(py_file, "w") as f:  # noqa: ASYNC230
             f.write(search_content)
         with open(txt_file, "w") as f:  # noqa: ASYNC230
