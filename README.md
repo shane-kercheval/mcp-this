@@ -312,7 +312,7 @@ You can also pass a JSON string containing tool definitions directly:
 
 ## Configuration Format
 
-Configuration can be provided as either a YAML file or a JSON string. The format supports both top-level tools and organized toolsets.
+Configuration can be provided as either a YAML file or a JSON string. The format supports defining tools directly.
 
 ### Basic Structure
 
@@ -438,7 +438,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 # Define custom tools
-toolset_config = {
+config = {
     'tools': {
         'extract-html-text': {
             'description': "Fetch a webpage and extract pure text, removing HTML tags",
@@ -458,7 +458,7 @@ toolset_config = {
 # Start server with custom configuration
 server_params = StdioServerParameters(
     command='python',
-    args=['-m', 'mcp_this', '--tools', json.dumps(toolset_config)],
+    args=['-m', 'mcp_this', '--tools', json.dumps(config)],
 )
 
 async with stdio_client(server_params) as (read, write):

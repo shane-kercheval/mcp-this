@@ -49,7 +49,6 @@ class TestRegisterParsedTools:
         """Test register_parsed_tools with a single tool."""
         # Create a sample ToolInfo object
         tool_info = create_tool_info(
-            toolset_name=None,
             tool_name="echo",
             tool_config={
                 "description": "Echo tool",
@@ -109,7 +108,6 @@ class TestRegisterParsedTools:
         """Test register_parsed_tools with multiple tools."""
         # Create sample ToolInfo objects
         tool_info1 = create_tool_info(
-            toolset_name=None,
             tool_name="echo",
             tool_config={
                 "description": "Echo tool",
@@ -125,7 +123,6 @@ class TestRegisterParsedTools:
             },
         )
         tool_info2 = create_tool_info(
-            toolset_name="file",
             tool_name="read",
             tool_config={
                 "description": "Read file",
@@ -160,7 +157,7 @@ class TestRegisterParsedTools:
 
         # Check calls for second tool
         args2, kwargs2 = mock_mcp.tool.call_args_list[1]
-        assert kwargs2["name"] == "file-read"
+        assert kwargs2["name"] == "read"
         assert kwargs2["description"] == tool_info2.get_full_description()
 
 
@@ -185,21 +182,15 @@ class TestToolRegistrationIntegration:
                         },
                     },
                 },
-            },
-            "toolsets": {
-                "file": {
-                    "tools": {
-                        "read": {
-                            "description": "Read file",
-                            "execution": {
-                                "command": "cat <<file_path>>",
-                            },
-                            "parameters": {
-                                "file_path": {
-                                    "description": "Path to file",
-                                    "required": True,
-                                },
-                            },
+                "read": {
+                    "description": "Read file",
+                    "execution": {
+                        "command": "cat <<file_path>>",
+                    },
+                    "parameters": {
+                        "file_path": {
+                            "description": "Path to file",
+                            "required": True,
                         },
                     },
                 },
@@ -221,4 +212,4 @@ class TestToolRegistrationIntegration:
         # Check that both tools were registered with correct names
         tool_names = [kwargs["name"] for _, kwargs in mock_mcp.tool.call_args_list]
         assert "echo" in tool_names
-        assert "file-read" in tool_names
+        assert "read" in tool_names

@@ -55,14 +55,14 @@ class TestMCPServer:
             tools = await session.list_tools()
             assert tools.tools  # Check that the tools list is not empty
             tool_names = [t.name for t in tools.tools]
-            assert "example-tool" in tool_names
+            assert "tool" in tool_names
 
     @pytest.mark.asyncio
     async def test_call_tool(self, server_params: StdioServerParameters):
         """Test that a tool can be called and returns expected results."""
         async with stdio_client(server_params) as (read, write), ClientSession(read, write) as session:  # noqa: E501
             await session.initialize()
-            result = await session.call_tool("example-tool", {"name": "World"})
+            result = await session.call_tool("tool", {"name": "World"})
             assert result.content
             result_text = result.content[0].text
             assert "Hello, World!" in result_text
@@ -73,7 +73,7 @@ class TestMCPServer:
         async with stdio_client(server_params) as (read, write), ClientSession(read, write) as session:  # noqa: E501
             await session.initialize()
             tools = await session.list_tools()
-            example_tool = next((t for t in tools.tools if t.name == "example-tool"), None)
+            example_tool = next((t for t in tools.tools if t.name == "tool"), None)
             assert example_tool is not None
             assert example_tool.inputSchema is not None
             assert 'properties' in example_tool.inputSchema
@@ -335,34 +335,21 @@ class TestExecuteCommand:
 class TestParseTools:
     """Test cases for the parse_tools function."""
 
-    def test_no_toolsets_or_tools(self):
-        """Test parsing a configuration with neither toolsets nor tools section."""
+    def test_no_tools(self):
+        """Test parsing a configuration with no tools section."""
         config = {"other_section": {}}
         result = parse_tools(config)
         assert result == []
 
-    def test_empty_toolsets(self):
-        """Test parsing a configuration with an empty toolsets section."""
-        config = {"toolsets": {}}
-        result = parse_tools(config)
-        assert isinstance(result, list)
-        assert len(result) == 0
-
     def test_empty_tools(self):
         """Test parsing a configuration with an empty tools section."""
-        config = {
-            "toolsets": {
-                "example": {
-                    "tools": {},
-                },
-            },
-        }
+        config = {"tools": {}}
         result = parse_tools(config)
         assert isinstance(result, list)
         assert len(result) == 0
 
-    def test_top_level_tools(self):
-        """Test parsing a configuration with top-level tools (no toolsets)."""
+    def test_tools_parsing(self):
+        """Test parsing a configuration with tools."""
         config = {
             "tools": {
                 "echo": {
@@ -385,15 +372,14 @@ class TestParseTools:
 
         tool = result[0]
         assert isinstance(tool, ToolInfo)
-        assert tool.toolset_name is None
         assert tool.tool_name == "echo"
         assert tool.full_tool_name == "echo"
         assert tool.function_name == "echo"
         assert tool.command_template == "echo <<message>>"
         assert tool.description == "Echo tool"
 
-    def test_combined_top_level_and_toolsets(self):
-        """Test parsing a configuration with both top-level tools and toolsets."""
+    def test_multiple_tools(self):
+        """Test parsing a configuration with multiple tools."""
         config = {
             "tools": {
                 "echo": {
@@ -408,21 +394,15 @@ class TestParseTools:
                         },
                     },
                 },
-            },
-            "toolsets": {
-                "file": {
-                    "tools": {
-                        "cat": {
-                            "description": "Cat file contents",
-                            "execution": {
-                                "command": "cat <<file_path>>",
-                            },
-                            "parameters": {
-                                "file_path": {
-                                    "description": "Path to file",
-                                    "required": True,
-                                },
-                            },
+                "cat": {
+                    "description": "Cat file contents",
+                    "execution": {
+                        "command": "cat <<file_path>>",
+                    },
+                    "parameters": {
+                        "file_path": {
+                            "description": "Path to file",
+                            "required": True,
                         },
                     },
                 },
@@ -435,32 +415,26 @@ class TestParseTools:
         # Extract full tool names for easier testing
         tool_names = [tool.full_tool_name for tool in result]
         assert "echo" in tool_names
-        assert "file-cat" in tool_names
+        assert "cat" in tool_names
 
-        # Check the top-level tool
+        # Check the echo tool
         echo_tool = next(tool for tool in result if tool.full_tool_name == "echo")
-        assert echo_tool.toolset_name is None
         assert echo_tool.tool_name == "echo"
         assert echo_tool.command_template == "echo <<message>>"
 
-        # Check the toolset tool
-        cat_tool = next(tool for tool in result if tool.full_tool_name == "file-cat")
-        assert cat_tool.toolset_name == "file"
+        # Check the cat tool
+        cat_tool = next(tool for tool in result if tool.full_tool_name == "cat")
         assert cat_tool.tool_name == "cat"
         assert cat_tool.command_template == "cat <<file_path>>"
 
     def test_basic_tool(self):
         """Test parsing a configuration with a basic tool."""
         config = {
-            "toolsets": {
-                "example": {
-                    "tools": {
-                        "tool": {
-                            "description": "A test tool",
-                            "execution": {
-                                "command": "echo Hello!",
-                            },
-                        },
+            "tools": {
+                "tool": {
+                    "description": "A test tool",
+                    "execution": {
+                        "command": "echo Hello!",
                     },
                 },
             },
@@ -471,52 +445,25 @@ class TestParseTools:
 
         tool = result[0]
         assert isinstance(tool, ToolInfo)
-        assert tool.toolset_name == "example"
         assert tool.tool_name == "tool"
-        assert tool.full_tool_name == "example-tool"
-        assert tool.function_name == "example_tool"
+        assert tool.full_tool_name == "tool"
+        assert tool.function_name == "tool"
         assert tool.command_template == "echo Hello!"
         assert tool.description == "A test tool"
-
-    def test_tool_with_same_name_as_toolset(self):
-        """Test parsing where tool name equals toolset name."""
-        config = {
-            "toolsets": {
-                "example": {
-                    "tools": {
-                        "example": {
-                            "description": "A test tool",
-                            "execution": {
-                                "command": "echo Hello!",
-                            },
-                        },
-                    },
-                },
-            },
-        }
-        result = parse_tools(config)
-        assert len(result) == 1
-        tool = result[0]
-        assert tool.full_tool_name == "example"  # Not prefixed with toolset
-        assert tool.function_name == "example"
 
     def test_tool_with_parameters(self):
         """Test parsing a tool with parameters."""
         config = {
-            "toolsets": {
-                "example": {
-                    "tools": {
-                        "greet": {
-                            "description": "A greeting tool",
-                            "execution": {
-                                "command": "echo Hello, <<name>>!",
-                            },
-                            "parameters": {
-                                "name": {
-                                    "description": "Your name",
-                                    "required": False,
-                                },
-                            },
+            "tools": {
+                "greet": {
+                    "description": "A greeting tool",
+                    "execution": {
+                        "command": "echo Hello, <<name>>!",
+                    },
+                    "parameters": {
+                        "name": {
+                            "description": "Your name",
+                            "required": False,
                         },
                     },
                 },
@@ -534,20 +481,16 @@ class TestParseTools:
     def test_tool_with_required_parameters(self):
         """Test parsing a tool with required parameters."""
         config = {
-            "toolsets": {
-                "example": {
-                    "tools": {
-                        "greet": {
-                            "description": "A greeting tool",
-                            "execution": {
-                                "command": "echo Hello, <<name>>!",
-                            },
-                            "parameters": {
-                                "name": {
-                                    "description": "Your name",
-                                    "required": True,
-                                },
-                            },
+            "tools": {
+                "greet": {
+                    "description": "A greeting tool",
+                    "execution": {
+                        "command": "echo Hello, <<name>>!",
+                    },
+                    "parameters": {
+                        "name": {
+                            "description": "Your name",
+                            "required": True,
                         },
                     },
                 },
@@ -561,34 +504,26 @@ class TestParseTools:
 
 
 
-    def test_multiple_tools(self):
-        """Test parsing configuration with multiple tools in different toolsets."""
+    def test_multiple_different_tools(self):
+        """Test parsing configuration with multiple different tools."""
         config = {
-            "toolsets": {
-                "toolset1": {
-                    "tools": {
-                        "tool1": {
-                            "description": "Tool 1",
-                            "execution": {
-                                "command": "echo Tool 1",
-                            },
-                        },
+            "tools": {
+                "tool1": {
+                    "description": "Tool 1",
+                    "execution": {
+                        "command": "echo Tool 1",
                     },
                 },
-                "toolset2": {
-                    "tools": {
-                        "tool2": {
-                            "description": "Tool 2",
-                            "execution": {
-                                "command": "echo Tool 2",
-                            },
-                        },
-                        "tool3": {
-                            "description": "Tool 3",
-                            "execution": {
-                                "command": "echo Tool 3",
-                            },
-                        },
+                "tool2": {
+                    "description": "Tool 2",
+                    "execution": {
+                        "command": "echo Tool 2",
+                    },
+                },
+                "tool3": {
+                    "description": "Tool 3",
+                    "execution": {
+                        "command": "echo Tool 3",
                     },
                 },
             },
@@ -598,47 +533,39 @@ class TestParseTools:
 
         # Extract full tool names for easier testing
         tool_names = [tool.full_tool_name for tool in result]
-        assert "toolset1-tool1" in tool_names
-        assert "toolset2-tool2" in tool_names
-        assert "toolset2-tool3" in tool_names
+        assert "tool1" in tool_names
+        assert "tool2" in tool_names
+        assert "tool3" in tool_names
 
     def test_tool_with_invalid_config_skipped(self):
         """Test that invalid tool configurations are skipped without throwing errors."""
         # This test would need some way to induce an error in tool parsing
         # For example, by making a parameter name invalid for a Python identifier
         config = {
-            "toolsets": {
-                "example": {
-                    "tools": {
-                        "valid": {
-                            "description": "Valid tool",
-                            "execution": {
-                                "command": "echo Valid",
-                            },
-                        },
-                        # This will cause an exception in the try block, but should be caught
-                        "invalid": None,  # This should cause an exception but be caught
+            "tools": {
+                "valid": {
+                    "description": "Valid tool",
+                    "execution": {
+                        "command": "echo Valid",
                     },
                 },
+                # This will cause an exception in the try block, but should be caught
+                "invalid": None,  # This should cause an exception but be caught
             },
         }
         # This shouldn't raise an exception
         result = parse_tools(config)
         assert len(result) == 1
-        assert result[0].full_tool_name == "example-valid"
+        assert result[0].full_tool_name == "valid"
 
     def test_function_name_sanitized(self):
         """Test that function names are properly sanitized from invalid characters."""
         config = {
-            "toolsets": {
-                "test-toolset": {  # Contains a hyphen
-                    "tools": {
-                        "test.tool": {  # Contains a period
-                            "description": "Test tool",
-                            "execution": {
-                                "command": "echo Test",
-                            },
-                        },
+            "tools": {
+                "test.tool": {  # Contains a period
+                    "description": "Test tool",
+                    "execution": {
+                        "command": "echo Test",
                     },
                 },
             },
@@ -646,21 +573,17 @@ class TestParseTools:
         result = parse_tools(config)
         assert len(result) == 1
         tool = result[0]
-        assert tool.full_tool_name == "test-toolset-test.tool"
-        assert tool.function_name == "test_toolset_test_tool"  # Sanitized
+        assert tool.full_tool_name == "test.tool"
+        assert tool.function_name == "test_tool"  # Sanitized
 
     def test_get_full_description_basic(self):
         """Test get_full_description for a tool with no parameters."""
         config = {
-            "toolsets": {
-                "example": {
-                    "tools": {
-                        "simple": {
-                            "description": "A simple test tool",
-                            "execution": {
-                                "command": "echo Test",
-                            },
-                        },
+            "tools": {
+                "simple": {
+                    "description": "A simple test tool",
+                    "execution": {
+                        "command": "echo Test",
                     },
                 },
             },
@@ -678,24 +601,20 @@ class TestParseTools:
     def test_get_full_description_with_parameters(self):
         """Test get_full_description for a tool with parameters."""
         config = {
-            "toolsets": {
-                "example": {
-                    "tools": {
-                        "greet": {
-                            "description": "A greeting tool",
-                            "execution": {
-                                "command": "echo Hello, <<name>>!",
-                            },
-                            "parameters": {
-                                "name": {
-                                    "description": "Your name",
-                                    "required": False,
-                                },
-                                "greeting": {
-                                    "description": "Greeting to use",
-                                    "required": True,
-                                },
-                            },
+            "tools": {
+                "greet": {
+                    "description": "A greeting tool",
+                    "execution": {
+                        "command": "echo Hello, <<name>>!",
+                    },
+                    "parameters": {
+                        "name": {
+                            "description": "Your name",
+                            "required": False,
+                        },
+                        "greeting": {
+                            "description": "Greeting to use",
+                            "required": True,
                         },
                     },
                 },
@@ -720,24 +639,20 @@ class TestParseTools:
     def test_get_full_description_with_complex_command(self):
         """Test get_full_description with a complex command template."""
         config = {
-            "toolsets": {
-                "example": {
-                    "tools": {
-                        "find": {
-                            "description": "Find files with pattern",
-                            "execution": {
-                                "command": "find . -name \"<<pattern>>\" -type f | xargs grep \"<<content>>\"",  # noqa: E501
-                            },
-                            "parameters": {
-                                "pattern": {
-                                    "description": "File pattern to search for",
-                                    "required": True,
-                                },
-                                "content": {
-                                    "description": "Content to find in files",
-                                    "required": True,
-                                },
-                            },
+            "tools": {
+                "find": {
+                    "description": "Find files with pattern",
+                    "execution": {
+                        "command": "find . -name \"<<pattern>>\" -type f | xargs grep \"<<content>>\"",  # noqa: E501
+                    },
+                    "parameters": {
+                        "pattern": {
+                            "description": "File pattern to search for",
+                            "required": True,
+                        },
+                        "content": {
+                            "description": "Content to find in files",
+                            "required": True,
                         },
                     },
                 },
@@ -761,28 +676,24 @@ class TestParseTools:
     def test_parameter_type_inference(self):
         """Test that the get_full_description method correctly infers parameter types."""
         config = {
-            "toolsets": {
-                "example": {
-                    "tools": {
-                        "process": {
-                            "description": "Process files with given settings",
-                            "execution": {
-                                "command": "process --input=<<file_path>> --pattern=<<search_pattern>> --name=<<user_name>>",  # noqa: E501
-                            },
-                            "parameters": {
-                                "file_path": {
-                                    "description": "Path to the input file",
-                                    "required": True,
-                                },
-                                "search_pattern": {
-                                    "description": "Pattern to search for",
-                                    "required": True,
-                                },
-                                "user_name": {
-                                    "description": "User name for processing",
-                                    "required": False,
-                                },
-                            },
+            "tools": {
+                "process": {
+                    "description": "Process files with given settings",
+                    "execution": {
+                        "command": "process --input=<<file_path>> --pattern=<<search_pattern>> --name=<<user_name>>",  # noqa: E501
+                    },
+                    "parameters": {
+                        "file_path": {
+                            "description": "Path to the input file",
+                            "required": True,
+                        },
+                        "search_pattern": {
+                            "description": "Pattern to search for",
+                            "required": True,
+                        },
+                        "user_name": {
+                            "description": "User name for processing",
+                            "required": False,
                         },
                     },
                 },
@@ -815,20 +726,16 @@ class TestParseTools:
         """
         # Test delete command
         delete_config = {
-            "toolsets": {
-                "file": {
-                    "tools": {
-                        "remove": {
-                            "description": "Delete a file",
-                            "execution": {
-                                "command": "rm <<file_path>>",
-                            },
-                            "parameters": {
-                                "file_path": {
-                                    "description": "Path to file to delete",
-                                    "required": True,
-                                },
-                            },
+            "tools": {
+                "remove": {
+                    "description": "Delete a file",
+                    "execution": {
+                        "command": "rm <<file_path>>",
+                    },
+                    "parameters": {
+                        "file_path": {
+                            "description": "Path to file to delete",
+                            "required": True,
                         },
                     },
                 },
@@ -841,24 +748,20 @@ class TestParseTools:
 
         # Test move command
         move_config = {
-            "toolsets": {
-                "file": {
-                    "tools": {
-                        "move": {
-                            "description": "Move a file",
-                            "execution": {
-                                "command": "mv <<source>> <<destination>>",
-                            },
-                            "parameters": {
-                                "source": {
-                                    "description": "Source path",
-                                    "required": True,
-                                },
-                                "destination": {
-                                    "description": "Destination path",
-                                    "required": True,
-                                },
-                            },
+            "tools": {
+                "move": {
+                    "description": "Move a file",
+                    "execution": {
+                        "command": "mv <<source>> <<destination>>",
+                    },
+                    "parameters": {
+                        "source": {
+                            "description": "Source path",
+                            "required": True,
+                        },
+                        "destination": {
+                            "description": "Destination path",
+                            "required": True,
                         },
                     },
                 },
@@ -871,24 +774,20 @@ class TestParseTools:
 
         # Test write command
         write_config = {
-            "toolsets": {
-                "file": {
-                    "tools": {
-                        "create": {
-                            "description": "Create a new file",
-                            "execution": {
-                                "command": "echo <<content>> > <<file_path>>",
-                            },
-                            "parameters": {
-                                "content": {
-                                    "description": "Content to write",
-                                    "required": True,
-                                },
-                                "file_path": {
-                                    "description": "Path to output file",
-                                    "required": True,
-                                },
-                            },
+            "tools": {
+                "create": {
+                    "description": "Create a new file",
+                    "execution": {
+                        "command": "echo <<content>> > <<file_path>>",
+                    },
+                    "parameters": {
+                        "content": {
+                            "description": "Content to write",
+                            "required": True,
+                        },
+                        "file_path": {
+                            "description": "Path to output file",
+                            "required": True,
                         },
                     },
                 },
@@ -919,12 +818,12 @@ class TestValidateConfig:
         # This should not raise an exception
         validate_config(valid_config)
 
-    def test_validate_missing_tools_and_toolsets(self):
-        """Test validating a config with neither tools nor toolsets."""
+    def test_validate_missing_tools(self):
+        """Test validating a config with no tools."""
         invalid_config = {
             "other_section": {},
         }
-        with pytest.raises(ValueError, match="Configuration must contain either a 'tools' or"):
+        with pytest.raises(ValueError, match="Configuration must contain a 'tools'"):
             validate_config(invalid_config)
 
     def test_validate_invalid_tool_config(self):
@@ -952,8 +851,8 @@ class TestValidateConfig:
         with pytest.raises(ValueError, match="execution must contain a 'command'"):
             validate_config(invalid_config)
 
-    def test_validate_combined_top_level_and_toolsets(self):
-        """Test validating a config with both top-level tools and toolsets."""
+    def test_validate_tools_config(self):
+        """Test validating a config with tools."""
         valid_config = {
             "tools": {
                 "echo": {
@@ -962,16 +861,10 @@ class TestValidateConfig:
                         "command": "echo Hello",
                     },
                 },
-            },
-            "toolsets": {
-                "file": {
-                    "tools": {
-                        "cat": {
-                            "description": "Cat file",
-                            "execution": {
-                                "command": "cat file.txt",
-                            },
-                        },
+                "cat": {
+                    "description": "Cat file",
+                    "execution": {
+                        "command": "cat file.txt",
                     },
                 },
             },
