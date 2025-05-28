@@ -11,7 +11,6 @@ class ToolInfo:
     """Information about a parsed tool from the configuration."""
 
     tool_name: str
-    full_tool_name: str
     function_name: str
     command_template: str
     description: str
@@ -225,10 +224,8 @@ def create_tool_info(tool_name: str, tool_config: dict) -> ToolInfo:
     Returns:
         A ToolInfo object.
     """
-    full_tool_name = tool_name
-
     # Create a valid Python identifier for the function name
-    function_name = re.sub(r'[^a-zA-Z0-9_]', '_', full_tool_name)
+    function_name = re.sub(r'[^a-zA-Z0-9_]', '_', tool_name)
 
     # Get execution configuration
     execution = tool_config['execution']
@@ -292,7 +289,6 @@ def create_tool_info(tool_name: str, tool_config: dict) -> ToolInfo:
     # Create a ToolInfo object
     return ToolInfo(
         tool_name=tool_name,
-        full_tool_name=full_tool_name,
         function_name=function_name,
         command_template=command_template,
         description=description,

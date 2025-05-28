@@ -373,7 +373,6 @@ class TestParseTools:
         tool = result[0]
         assert isinstance(tool, ToolInfo)
         assert tool.tool_name == "echo"
-        assert tool.full_tool_name == "echo"
         assert tool.function_name == "echo"
         assert tool.command_template == "echo <<message>>"
         assert tool.description == "Echo tool"
@@ -412,18 +411,18 @@ class TestParseTools:
         assert isinstance(result, list)
         assert len(result) == 2
 
-        # Extract full tool names for easier testing
-        tool_names = [tool.full_tool_name for tool in result]
+        # Extract tool names for easier testing
+        tool_names = [tool.tool_name for tool in result]
         assert "echo" in tool_names
         assert "cat" in tool_names
 
         # Check the echo tool
-        echo_tool = next(tool for tool in result if tool.full_tool_name == "echo")
+        echo_tool = next(tool for tool in result if tool.tool_name == "echo")
         assert echo_tool.tool_name == "echo"
         assert echo_tool.command_template == "echo <<message>>"
 
         # Check the cat tool
-        cat_tool = next(tool for tool in result if tool.full_tool_name == "cat")
+        cat_tool = next(tool for tool in result if tool.tool_name == "cat")
         assert cat_tool.tool_name == "cat"
         assert cat_tool.command_template == "cat <<file_path>>"
 
@@ -446,7 +445,6 @@ class TestParseTools:
         tool = result[0]
         assert isinstance(tool, ToolInfo)
         assert tool.tool_name == "tool"
-        assert tool.full_tool_name == "tool"
         assert tool.function_name == "tool"
         assert tool.command_template == "echo Hello!"
         assert tool.description == "A test tool"
@@ -531,8 +529,8 @@ class TestParseTools:
         result = parse_tools(config)
         assert len(result) == 3
 
-        # Extract full tool names for easier testing
-        tool_names = [tool.full_tool_name for tool in result]
+        # Extract tool names for easier testing
+        tool_names = [tool.tool_name for tool in result]
         assert "tool1" in tool_names
         assert "tool2" in tool_names
         assert "tool3" in tool_names
@@ -556,7 +554,7 @@ class TestParseTools:
         # This shouldn't raise an exception
         result = parse_tools(config)
         assert len(result) == 1
-        assert result[0].full_tool_name == "valid"
+        assert result[0].tool_name == "valid"
 
     def test_function_name_sanitized(self):
         """Test that function names are properly sanitized from invalid characters."""
@@ -573,7 +571,7 @@ class TestParseTools:
         result = parse_tools(config)
         assert len(result) == 1
         tool = result[0]
-        assert tool.full_tool_name == "test.tool"
+        assert tool.tool_name == "test.tool"
         assert tool.function_name == "test_tool"  # Sanitized
 
     def test_get_full_description_basic(self):

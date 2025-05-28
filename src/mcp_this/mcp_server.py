@@ -156,7 +156,7 @@ def register_parsed_tools(tools_info: list[ToolInfo]) -> None:
             handler = tool_namespace[tool_info.function_name]
             # Register the function with MCP
             mcp.tool(
-                name=tool_info.full_tool_name,
+                name=tool_info.tool_name,
                 description=tool_info.get_full_description(),
             )(handler)
         except Exception:

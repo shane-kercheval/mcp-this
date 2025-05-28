@@ -88,7 +88,7 @@ class TestRegisterParsedTools:
         tool_info = MagicMock(spec=ToolInfo)
         tool_info.exec_code = "some invalid code"
         tool_info.function_name = "test_function"
-        tool_info.full_tool_name = "test"
+        tool_info.tool_name = "test"
         tool_info.get_full_description.return_value = "Test description"
 
         # Make exec raise an exception
