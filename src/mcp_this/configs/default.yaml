@@ -26,34 +26,74 @@ tools:
 
   find-files:
     description: |
-      Locate files by name, pattern, type, size, date, or other criteria
+      Locate files by name, pattern, type, size, date, or other criteria with gitignore support
       
       Examples:
         - find_files(directory="/full/path/src", arguments="-name *.py")  # find all Python files
         - find_files(directory="/full/path/project", arguments="-mtime -7")  # find files modified in the last 7 days
         - find_files(directory="/full/path/data", arguments="-size +1M")  # find files larger than 1 MB
-        - find_files(directory="/full/path/src", arguments="-name *.js -not -path */node_modules/*")  # find JS files excluding node_modules
+        - find_files(directory="/full/path/src", arguments="-name *.js", exclude_paths="./build/*|./dist/*")  # find JS files excluding build directories
+        - find_files(directory="/full/path/project", exclude_files="*.log|*.tmp|*.bak")  # find all files except logs and temp files
+        - find_files(directory="/full/path/src", arguments="-name *.py", exclude_paths="*/test/*|*/tests/*", exclude_files="*_backup.py")  # find Python files excluding test dirs and backup files
     execution:
       command: >-
-        find '<<directory>>' -type f <<arguments>> | sort
+        cd '<<directory>>' && 
+        find . -type f \
+          -not -path './.git/*' \
+          -not -path './.claude/*' \
+          -not -path './.env/*' \
+          -not -path './.venv/*' \
+          -not -path './env/*' \
+          -not -path './node_modules/*' \
+          -not -path './__pycache__/*' \
+          -not -name '.DS_Store' \
+          -not -name '*.pyc' \
+          $(if [ -f .gitignore ]; then
+              while IFS= read -r line; do
+                # Skip empty lines and comments
+                case "$line" in
+                  ''|'#'*) continue ;;
+                esac
+                # Remove leading/trailing whitespace
+                line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+                # Check if it's a path pattern (contains / or ends with /)
+                case "$line" in
+                  */*|*/) echo "-not -path ./$line" ;;
+                  *) echo "-not -name $line" ;;
+                esac
+              done < .gitignore
+            fi) \
+          $(if [ -n '<<exclude_paths>>' ]; then 
+              echo '<<exclude_paths>>' | sed 's/|/ -not -path /g' | sed 's/^/-not -path /'; 
+            fi) \
+          $(if [ -n '<<exclude_files>>' ]; then 
+              echo '<<exclude_files>>' | sed 's/|/ -not -name /g' | sed 's/^/-not -name /'; 
+            fi) \
+          <<arguments>> | sort
     parameters:
       directory:
         description: Directory to search in (quotes are handled automatically in the command)
         required: true
       arguments:
-        description: Additional find arguments (e.g., "-name *.py -mtime -7 -not -path */venv/*")
+        description: Additional find arguments (e.g., "-name *.py -mtime -7 -size +1M")
+        required: false
+      exclude_paths:
+        description: Additional path patterns to exclude, pipe-separated (e.g., "./build/*|./dist/*|./target/*")
+        required: false
+      exclude_files:
+        description: Additional file patterns to exclude, pipe-separated (e.g., "*.log|*.tmp|*.bak")
         required: false
 
   find-text-patterns:
     description: |
-      Find text patterns in files with optional context and filtering (via grep)
-      This tool is useful for searching through code files, logs, or any text files.
+      Find text patterns in files with gitignore support and optional context filtering
+      This tool is useful for searching through code files, logs, or any text files while respecting .gitignore.
 
       Examples:
-        - find_text_patterns(pattern="function", arguments="/full/path/directory --include=*.js")  # find "function" in JS files
-        - find_text_patterns(pattern="TODO:", arguments="-i /full/path/src --include=*.py --include=*.js -B 2 -A 2")  # find TODOs case-insensitively with 2 lines of context before and after
-        - find_text_patterns(pattern="import.*pandas", arguments="/full/path/src --include=*.py")  # find pandas imports in Python files
-        - find_text_patterns(pattern="error", arguments="-i /full/path/logs -A 5")  # find errors case-insensitively with 5 lines after
+        - find_text_patterns(pattern="function", directory="/full/path/directory", arguments="--include=*.js")  # find "function" in JS files
+        - find_text_patterns(pattern="TODO:", directory="/full/path/src", arguments="-i --include=*.py --include=*.js -B 2 -A 2")  # find TODOs with context
+        - find_text_patterns(pattern="import.*pandas", directory="/full/path/src", arguments="--include=*.py")  # find pandas imports
+        - find_text_patterns(pattern="error", directory="/full/path/logs", arguments="-i -A 5", custom_excludes="|build|dist")  # find errors with custom excludes
 
         Output Example:
 
@@ -62,13 +102,33 @@ tools:
         /full/path/src/script.py:30:    # TODO: Add error handling
     execution:
       command: >-
-        grep -r -n --color=never '<<pattern>>' <<arguments>>
+        cd '<<directory>>' &&
+        if [ -d .git ]; then
+          git ls-files | grep -v -E '(\.git/|\.claude/|\.env/|\.venv/|env/|node_modules/|__pycache__/|\.DS_Store|\.pyc<<custom_excludes>>)' |
+          xargs grep -n --color=never '<<pattern>>' <<arguments>> 2>/dev/null || true
+        else
+          grep -r -n --color=never '<<pattern>>' . <<arguments>>
+          --exclude-dir=.git 
+          --exclude-dir=.claude 
+          --exclude-dir=.env 
+          --exclude-dir=.venv 
+          --exclude-dir=env 
+          --exclude-dir=node_modules 
+          --exclude-dir=__pycache__<<custom_excludes>> 
+          2>/dev/null || true
+        fi
     parameters:
       pattern:
         description: Text pattern to search for (supports regex, quotes are handled automatically in the command)
         required: true
+      directory:
+        description: Directory to search in (quotes are handled automatically in the command)
+        required: true
       arguments:
-        description: Additional grep arguments (e.g., directory/files to search, "-i for case-insensitive, -A 3 for context, --include=*.py")
+        description: Additional grep arguments (e.g., "-i for case-insensitive, -A 3 for context, --include=*.py")
+        required: false
+      custom_excludes:
+        description: Additional patterns to exclude (begin with | e.g., "|build|dist"). Applied as exclude patterns.
         required: false
 
   extract-file-text:
