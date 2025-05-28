@@ -11,7 +11,6 @@ class ToolInfo:
     """Information about a parsed tool from the configuration."""
 
     tool_name: str
-    full_tool_name: str
     function_name: str
     command_template: str
     description: str
@@ -19,7 +18,6 @@ class ToolInfo:
     param_string: str
     exec_code: str
     runtime_info: dict[str, any]  # Information needed by the generated function at runtime
-    toolset_name: str = None  # Optional, could be None for top-level tools
 
     def get_full_description(self) -> str:
         """
@@ -202,56 +200,32 @@ def parse_tools(config: dict) -> list[ToolInfo]:
     """
     tools_info = []
 
-    # Handle top-level tools if present
+    # Handle tools
     if 'tools' in config:
-        top_level_tools = config['tools']
-        for tool_name, tool_config in top_level_tools.items():
+        tools = config['tools']
+        for tool_name, tool_config in tools.items():
             try:
-                tool_info = create_tool_info(None, tool_name, tool_config)
+                tool_info = create_tool_info(tool_name, tool_config)
                 tools_info.append(tool_info)
             except Exception:
                 traceback.print_exc()
 
-    # Handle tools within toolsets if present
-    if 'toolsets' in config:
-        toolsets = config['toolsets']
-        for toolset_name, toolset_config in toolsets.items():
-            tools = toolset_config.get('tools', {})
-            for tool_name, tool_config in tools.items():
-                try:
-                    tool_info = create_tool_info(toolset_name, tool_name, tool_config)
-                    tools_info.append(tool_info)
-                except Exception:
-                    traceback.print_exc()
-
     return tools_info
 
 
-def create_tool_info(toolset_name: str, tool_name: str, tool_config: dict) -> ToolInfo:
+def create_tool_info(tool_name: str, tool_config: dict) -> ToolInfo:
     """
     Create a ToolInfo object from tool configuration.
 
     Args:
-        toolset_name: The name of the toolset (can be None for top-level tools).
         tool_name: The name of the tool.
         tool_config: The tool configuration.
 
     Returns:
         A ToolInfo object.
     """
-    # Determine the full tool name
-    if toolset_name is None:
-        # For top-level tools, full name is the same as tool name
-        full_tool_name = tool_name
-    elif tool_name == toolset_name:
-        # For tools with same name as toolset, don't prefix
-        full_tool_name = tool_name
-    else:
-        # Standard case: prefix toolset name
-        full_tool_name = f"{toolset_name}-{tool_name}"
-
     # Create a valid Python identifier for the function name
-    function_name = re.sub(r'[^a-zA-Z0-9_]', '_', full_tool_name)
+    function_name = re.sub(r'[^a-zA-Z0-9_]', '_', tool_name)
 
     # Get execution configuration
     execution = tool_config['execution']
@@ -314,9 +288,7 @@ def create_tool_info(toolset_name: str, tool_name: str, tool_config: dict) -> To
 
     # Create a ToolInfo object
     return ToolInfo(
-        toolset_name=toolset_name,
         tool_name=tool_name,
-        full_tool_name=full_tool_name,
         function_name=function_name,
         command_template=command_template,
         description=description,

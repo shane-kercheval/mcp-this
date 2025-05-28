@@ -1681,30 +1681,52 @@ class TestExtractCodeInfo:
         temp_test_directory: str,
     ):
         """Test that the extract-code-info tool can be called correctly."""
-        # Create a simple Python file to analyze
+        # Create a Python file with actual functions, classes, imports, and TODOs
         test_file = os.path.join(temp_test_directory, "test.py")
         with open(test_file, "w") as f:  # noqa: ASYNC230
-            f.write("print('Hello world')\n")
+            f.write("""import os
+from pathlib import Path
+
+class TestClass:
+    '''A test class.'''
+
+    def __init__(self):
+        pass
+
+    def test_method(self):
+        # TODO: implement this method
+        return "test"
+
+def standalone_function():
+    '''A standalone function.'''
+    print('Hello world')
+    # FIXME: this needs improvement
+    return True
+""")
 
         async with stdio_client(server_params) as (read, write), ClientSession(
             read, write,
         ) as session:
             await session.initialize()
 
-            # Call the tool with minimal arguments
+            # Call the tool with functions type
             result = await session.call_tool(
                 "extract-code-info",
                 {
-                    "files": os.path.join(temp_test_directory, "test.py"),
+                    "files": test_file,
                     "types": "functions",
                 },
             )
 
-            # Verify that the call returns a result (we don't validate content)
+            # Verify that the call returns actual function definitions
             assert result.content
             result_text = result.content[0].text
             assert 'Error' not in result_text
             assert isinstance(result_text, str)
+            # Check that it found the actual functions
+            assert "def __init__(self):" in result_text
+            assert "def test_method(self):" in result_text
+            assert "def standalone_function():" in result_text
 
     async def test_different_types_parameter(
         self,
@@ -1712,30 +1734,55 @@ class TestExtractCodeInfo:
         temp_test_directory: str,
     ):
         """Test that the extract-code-info tool can be called with different types parameters."""
-        # Create a simple Python file to analyze
+        # Create a Python file with actual content
         test_file = os.path.join(temp_test_directory, "multi_type.py")
         with open(test_file, "w") as f:  # noqa: ASYNC230
-            f.write("print('Hello world')\n")
+            f.write("""import json
+from datetime import datetime
+
+class DataProcessor:
+    '''Processes data.'''
+    pass
+
+class ResultHandler:
+    '''Handles results.'''
+    pass
+""")
 
         async with stdio_client(server_params) as (read, write), ClientSession(
             read, write,
         ) as session:
             await session.initialize()
 
-            # Call the tool with different types parameter
+            # Test classes type
             result = await session.call_tool(
                 "extract-code-info",
                 {
-                    "files": os.path.join(temp_test_directory, "multi_type.py"),
+                    "files": test_file,
                     "types": "classes",
                 },
             )
 
-            # Verify that the call returns a result (we don't validate content)
             assert result.content
             result_text = result.content[0].text
             assert 'Error' not in result_text
-            assert isinstance(result_text, str)
+            assert "class DataProcessor:" in result_text
+            assert "class ResultHandler:" in result_text
+
+            # Test imports type
+            result = await session.call_tool(
+                "extract-code-info",
+                {
+                    "files": test_file,
+                    "types": "imports",
+                },
+            )
+
+            assert result.content
+            result_text = result.content[0].text
+            assert 'Error' not in result_text
+            assert "import json" in result_text
+            assert "from datetime import datetime" in result_text
 
     async def test_multiple_types_parameter(
         self,
@@ -1743,30 +1790,142 @@ class TestExtractCodeInfo:
         temp_test_directory: str,
     ):
         """Test that the extract-code-info tool can be called with multiple types parameters."""
-        # Create a simple Python file to analyze
+        # Create a comprehensive Python file
         test_file = os.path.join(temp_test_directory, "multi_param.py")
         with open(test_file, "w") as f:  # noqa: ASYNC230
-            f.write("print('Hello world')\n")
+            f.write("""import sys
+from collections import defaultdict
+
+class ConfigManager:
+    '''Manages configuration.'''
+
+    def load_config(self):
+        # TODO: implement config loading
+        pass
+
+    def save_config(self):
+        # FIXME: add error handling
+        return True
+
+def process_data(data):
+    '''Process the input data.'''
+    # TODO: add validation
+    return data.upper()
+""")
 
         async with stdio_client(server_params) as (read, write), ClientSession(
             read, write,
         ) as session:
             await session.initialize()
 
-            # Call the tool with multiple types parameter
+            # Call the tool with all types
             result = await session.call_tool(
                 "extract-code-info",
                 {
-                    "files": os.path.join(temp_test_directory, "multi_param.py"),
+                    "files": test_file,
                     "types": "functions,classes,imports,todos",
                 },
             )
 
-            # Verify that the call returns a result (we don't validate content)
             assert result.content
             result_text = result.content[0].text
             assert 'Error' not in result_text
-            assert isinstance(result_text, str)
+
+            # Check all types are found
+            assert "--- functions ---" in result_text
+            assert "--- classes ---" in result_text
+            assert "--- imports ---" in result_text
+            assert "--- todos ---" in result_text
+
+            # Check specific content
+            assert "def load_config(self):" in result_text
+            assert "class ConfigManager:" in result_text
+            assert "import sys" in result_text
+            assert "TODO: implement config loading" in result_text
+            assert "FIXME: add error handling" in result_text
+
+    async def test_absolute_path_support(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test that the extract-code-info tool works with absolute paths."""
+        # Create a Python file with functions in a subdirectory
+        subdir = os.path.join(temp_test_directory, "subdir")
+        os.makedirs(subdir, exist_ok=True)
+        test_file = os.path.join(subdir, "absolute_test.py")
+        with open(test_file, "w") as f:  # noqa: ASYNC230
+            f.write("""def absolute_function():
+    '''Function to test absolute path extraction.'''
+    return "absolute"
+
+class AbsoluteClass:
+    '''Class to test absolute path extraction.'''
+    pass
+""")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Test with absolute path (this was the original issue)
+            result = await session.call_tool(
+                "extract-code-info",
+                {
+                    "files": test_file,  # This is an absolute path
+                    "types": "functions,classes",
+                },
+            )
+
+            assert result.content
+            result_text = result.content[0].text
+            assert 'Error' not in result_text
+
+            # Verify it found the function and class
+            assert "def absolute_function():" in result_text
+            assert "class AbsoluteClass:" in result_text
+            assert "=== File:" in result_text
+            assert "absolute_test.py" in result_text
+
+    async def test_wildcard_path_support(
+        self,
+        server_params: StdioServerParameters,
+        temp_test_directory: str,
+    ):
+        """Test that the extract-code-info tool works with wildcard paths."""
+        # Create multiple Python files
+        test_file1 = os.path.join(temp_test_directory, "file1.py")
+        test_file2 = os.path.join(temp_test_directory, "file2.py")
+
+        with open(test_file1, "w") as f:  # noqa: ASYNC230
+            f.write("def function_one(): pass")
+
+        with open(test_file2, "w") as f:  # noqa: ASYNC230
+            f.write("def function_two(): pass")
+
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Test with wildcard pattern
+            wildcard_pattern = os.path.join(temp_test_directory, "*.py")
+            result = await session.call_tool(
+                "extract-code-info",
+                {
+                    "files": wildcard_pattern,
+                    "types": "functions",
+                },
+            )
+
+            assert result.content
+            result_text = result.content[0].text
+            assert 'Error' not in result_text
+
+            # Should find functions from both files
+            assert "def function_one():" in result_text
+            assert "def function_two():" in result_text
 
     async def test_non_existent_file(
         self,
@@ -1787,10 +1946,11 @@ class TestExtractCodeInfo:
                 },
             )
 
-            # Verify we got some output (likely an error message or empty result)
+            # Verify we got some output (likely an empty result)
             assert result.content
             result_text = result.content[0].text
             assert isinstance(result_text, str)
+            # For non-existent files, we should get minimal output
             assert len(result_text) >= 0
 
 

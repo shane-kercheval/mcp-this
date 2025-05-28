@@ -1,11 +1,9 @@
-toolsets:
-  example:
-    tools:
-      tool:
-        description: A test tool
-        execution:
-          command: echo Hello, <<name>>!
-        parameters:
-          name:
-            description: Your name
-            required: false
+tools:
+  tool:
+    description: A test tool
+    execution:
+      command: echo Hello, <<name>>!
+    parameters:
+      name:
+        description: Your name
+        required: false

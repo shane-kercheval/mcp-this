@@ -191,9 +191,9 @@ class TestValidateConfig:
             validate_config([])
 
     def test_validate_config_missing_sections(self):
-        """Test validating a config missing both tools and toolsets sections."""
+        """Test validating a config missing tools section."""
         # Assert that ValueError is raised
-        with pytest.raises(ValueError, match="Configuration must contain either a 'tools' or 'toolsets' section"):  # noqa: E501
+        with pytest.raises(ValueError, match="Configuration must contain a 'tools' section"):
             validate_config({"other_section": {}})
 
     def test_validate_config_tools_not_dict(self):
@@ -238,45 +238,6 @@ class TestValidateConfig:
                 },
             })
 
-    def test_validate_config_toolsets_not_dict(self):
-        """Test validating a config with toolsets that's not a dictionary."""
-        # Assert that ValueError is raised
-        with pytest.raises(ValueError, match="'toolsets' must be a dictionary"):
-            validate_config({"toolsets": []})
-
-    def test_validate_config_toolset_not_dict(self):
-        """Test validating a config with a toolset that's not a dictionary."""
-        # Assert that ValueError is raised
-        with pytest.raises(ValueError, match="Toolset .* must be a dictionary"):
-            validate_config({
-                "toolsets": {
-                    "test": [],
-                },
-            })
-
-    def test_validate_config_toolset_missing_tools(self):
-        """Test validating a toolset without a tools section."""
-        # Assert that ValueError is raised
-        with pytest.raises(ValueError, match="Toolset .* must contain a 'tools' section"):
-            validate_config({
-                "toolsets": {
-                    "test": {
-                        "description": "Test toolset",
-                    },
-                },
-            })
-
-    def test_validate_config_toolset_tools_not_dict(self):
-        """Test validating a toolset with tools that's not a dictionary."""
-        # Assert that ValueError is raised
-        with pytest.raises(ValueError, match="Tools in toolset .* must be a dictionary"):
-            validate_config({
-                "toolsets": {
-                    "test": {
-                        "tools": [],
-                    },
-                },
-            })
 
     def test_validate_config_valid_tools(self):
         """Test validating a valid config with tools."""
@@ -292,48 +253,3 @@ class TestValidateConfig:
             },
         })
 
-    def test_validate_config_valid_toolsets(self):
-        """Test validating a valid config with toolsets."""
-        # This should not raise an exception
-        validate_config({
-            "toolsets": {
-                "test": {
-                    "description": "Test toolset",
-                    "tools": {
-                        "echo": {
-                            "description": "Echo tool",
-                            "execution": {
-                                "command": "echo test",
-                            },
-                        },
-                    },
-                },
-            },
-        })
-
-    def test_validate_config_valid_both(self):
-        """Test validating a valid config with both tools and toolsets."""
-        # This should not raise an exception
-        validate_config({
-            "tools": {
-                "test": {
-                    "description": "Test tool",
-                    "execution": {
-                        "command": "echo test",
-                    },
-                },
-            },
-            "toolsets": {
-                "test": {
-                    "description": "Test toolset",
-                    "tools": {
-                        "echo": {
-                            "description": "Echo tool",
-                            "execution": {
-                                "command": "echo test",
-                            },
-                        },
-                    },
-                },
-            },
-        })

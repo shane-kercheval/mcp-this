@@ -99,35 +99,16 @@ def validate_config(config: dict) -> None:
     if not isinstance(config, dict):
         raise ValueError("Configuration must be a dictionary")
 
-    # Check if we have either a top-level tools section or a toolsets section
-    if 'tools' not in config and 'toolsets' not in config:
-        raise ValueError("Configuration must contain either a 'tools' or 'toolsets' section")
+    # Check if we have a tools section
+    if 'tools' not in config:
+        raise ValueError("Configuration must contain a 'tools' section")
 
-    # Validate top-level tools section if present
-    if 'tools' in config:
-        if not isinstance(config['tools'], dict):
-            raise ValueError("'tools' must be a dictionary")
+    # Validate tools section
+    if not isinstance(config['tools'], dict):
+        raise ValueError("'tools' must be a dictionary")
 
-        for tool_name, tool_config in config['tools'].items():
-            validate_tool_config(tool_name, tool_config)
-
-    # Validate toolsets section if present
-    if 'toolsets' in config:
-        if not isinstance(config['toolsets'], dict):
-            raise ValueError("'toolsets' must be a dictionary")
-
-        for toolset_name, toolset_config in config['toolsets'].items():
-            if not isinstance(toolset_config, dict):
-                raise ValueError(f"Toolset '{toolset_name}' must be a dictionary")
-
-            if 'tools' not in toolset_config:
-                raise ValueError(f"Toolset '{toolset_name}' must contain a 'tools' section")
-
-            if not isinstance(toolset_config['tools'], dict):
-                raise ValueError(f"Tools in toolset '{toolset_name}' must be a dictionary")
-
-            for tool_name, tool_config in toolset_config['tools'].items():
-                validate_tool_config(f"{toolset_name}.{tool_name}", tool_config)
+    for tool_name, tool_config in config['tools'].items():
+        validate_tool_config(tool_name, tool_config)
 
 
 def validate_tool_config(tool_id: str, tool_config: dict) -> None:
@@ -175,7 +156,7 @@ def register_parsed_tools(tools_info: list[ToolInfo]) -> None:
             handler = tool_namespace[tool_info.function_name]
             # Register the function with MCP
             mcp.tool(
-                name=tool_info.full_tool_name,
+                name=tool_info.tool_name,
                 description=tool_info.get_full_description(),
             )(handler)
         except Exception:

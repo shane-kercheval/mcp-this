@@ -79,7 +79,7 @@ class TestConfigurationFiles:
 
         # Check that the default configuration has the expected structure
         assert isinstance(default_config, dict)
-        assert "tools" in default_config or "toolsets" in default_config
+        assert "tools" in default_config
 
 
     def test_config_with_empty_parameters(self):

@@ -199,35 +199,31 @@ tools:
         - extract_code_info(files="**/*.py", types="functions", exclude_paths="venv|.venv|__pycache__", exclude_files="*_test.py")  # Python files excluding tests and virtual envs
     execution:
       command: >-
-        for file in $({
-          echo "find . -name '<<files>>' -type f";
-          echo "-not -path './.git/*'";
-          echo "-not -path './.claude/*'";
-          echo "-not -path './.env/*'";
-          echo "-not -path './.venv/*'";
-          echo "-not -path './env/*'";
-          echo "-not -path './node_modules/*'";
-          echo "-not -path './__pycache__/*'";
-          echo "-not -name '.DS_Store'";
-          
-          if [ -n "<<exclude_paths>>" ]; then
+        for file in $(find <<files>> -type f 
+        -not -path "*/.git/*"
+        -not -path "*/.claude/*"
+        -not -path "*/.env/*"
+        -not -path "*/.venv/*"
+        -not -path "*/env/*"
+        -not -path "*/node_modules/*"
+        -not -path "*/__pycache__/*"
+        -not -name ".DS_Store"
+        $(if [ -n "<<exclude_paths>>" ]; then 
             echo "<<exclude_paths>>" | tr '|' '\n' | while read -r path; do
-              [ -n "$path" ] && echo "-not -path './$path/*'";
+              [ -n "$path" ] && echo "-not -path \"*/$path/*\"";
             done;
-          fi;
-          
-          if [ -n "<<exclude_files>>" ]; then
+          fi)
+        $(if [ -n "<<exclude_files>>" ]; then 
             echo "<<exclude_files>>" | tr '|' '\n' | while read -r file; do
-              [ -n "$file" ] && echo "-not -name '$file'";
+              [ -n "$file" ] && echo "-not -name \"$file\"";
             done;
-          fi;
-        } | tr '\n' ' ' | xargs find 2>/dev/null); do
+          fi) 2>/dev/null); do
           if [ ! -f "$file" ]; then continue; fi;
           echo "=== File: $file ===";
-          if [[ "<<types>>" == *"functions"* ]]; then echo "--- functions ---"; grep -n "^[[:space:]]*def " "$file" || grep -n "function " "$file" || echo "No function definitions found"; fi;
-          if [[ "<<types>>" == *"imports"* ]]; then echo "--- imports ---"; grep -n "^[[:space:]]*import " "$file" || grep -n "^[[:space:]]*from " "$file" || grep -n "require(" "$file" || echo "No imports found"; fi;
-          if [[ "<<types>>" == *"classes"* ]]; then echo "--- classes ---"; grep -n "^[[:space:]]*class " "$file" || echo "No classes found"; fi;
-          if [[ "<<types>>" == *"todos"* ]]; then echo "--- todos ---"; grep -n -i "TODO\\|FIXME" "$file" || echo "No TODOs found"; fi;
+          if echo "<<types>>" | grep -q "functions"; then echo "--- functions ---"; (grep -n "^[ 	]*def " "$file" 2>/dev/null || grep -n "function " "$file" 2>/dev/null || echo "No function definitions found"); fi;
+          if echo "<<types>>" | grep -q "imports"; then echo "--- imports ---"; (grep -n "^[ 	]*import " "$file" 2>/dev/null; grep -n "^[ 	]*from " "$file" 2>/dev/null; grep -n "require(" "$file" 2>/dev/null) | sort -n || echo "No imports found"; fi;
+          if echo "<<types>>" | grep -q "classes"; then echo "--- classes ---"; grep -n "^[ 	]*class " "$file" 2>/dev/null || echo "No classes found"; fi;
+          if echo "<<types>>" | grep -q "todos"; then echo "--- todos ---"; grep -n -i "TODO\|FIXME" "$file" 2>/dev/null || echo "No TODOs found"; fi;
           echo "";
         done
     parameters:
