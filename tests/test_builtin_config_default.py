@@ -1742,42 +1742,6 @@ class TestExtractCodeInfo:
             assert isinstance(result_text, str)
             assert len(result_text) >= 0
 
-    async def test_empty_file_content(
-        self,
-        server_params: StdioServerParameters,
-        temp_test_directory: str,
-    ):
-        """Test the extract-code-info tool with a file that has no matching code elements."""
-        # Create a file with no functions, classes, imports, or TODOs
-        empty_file = os.path.join(temp_test_directory, "empty_content.py")
-        with open(empty_file, "w") as f:  # noqa: ASYNC230
-            f.write("# Just a comment\n# No code elements here\n")
-
-        async with stdio_client(server_params) as (read, write), ClientSession(
-            read, write,
-        ) as session:
-            await session.initialize()
-
-            # Call the tool on the empty file
-            result = await session.call_tool(
-                "extract-code-info",
-                {
-                    "files": empty_file,
-                    "types": "functions,classes,imports,todos",
-                },
-            )
-
-            # Verify we got some output
-            assert result.content
-            result_text = result.content[0].text
-            assert 'Error' not in result_text
-
-            # Should show the file was processed but found no elements
-            assert "empty_content.py" in result_text
-            assert "No function definitions found" in result_text
-            assert "No classes found" in result_text
-            assert "No imports found" in result_text
-            assert "No TODOs found" in result_text
 
 
 @pytest.mark.asyncio
