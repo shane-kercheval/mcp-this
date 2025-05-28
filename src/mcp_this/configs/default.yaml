@@ -23,7 +23,7 @@ tools:
         description: Additional patterns to exclude. Use pipe-separated values for multiple exclusions (e.g., "build|dist|target" or just "build" for single exclusion). Probably not needed if there is a .gitignore file.
         required: false
       format_args:
-        description: Additional formatting arguments (e.g., "-L 3 -C --dirsfirst")
+        description: Additional tree command options (e.g., "-L 3 -C --dirsfirst")
         required: false
 
   find-files:
@@ -89,7 +89,7 @@ tools:
         description: Directory to search in (quotes are handled automatically in the command)
         required: true
       arguments:
-        description: Additional find arguments (e.g., "-name *.py -mtime -7 -size +1M")
+        description: Additional find criteria and options (e.g., "-name *.py -mtime -7 -size +1M"). These are appended to the find command after all exclusions.
         required: false
       exclude_paths:
         description: Additional path patterns to exclude, pipe-separated (e.g., "./build/*|./dist/*|./target/*")
@@ -144,7 +144,7 @@ tools:
         description: Directory to search in (quotes are handled automatically in the command)
         required: true
       arguments:
-        description: Additional grep arguments (e.g., "-i for case-insensitive, -A 3 for context, --include=*.py")
+        description: Additional grep options (e.g., "-i" for case-insensitive, "-A 3 -B 2" for context lines, "--include=*.py" for file filtering). These are placed before the pattern in the grep command.
         required: false
       exclude_paths:
         description: Additional directory patterns to exclude, pipe-separated (e.g., "build|dist|target")
@@ -258,7 +258,7 @@ tools:
         lynx -dump -nomargins -hiddenlinks=ignore <<dump_options>> '<<url>>'
     parameters:
       url:
-        description: URL of the webpage to fetch and convert to text
+        description: Full URL of the webpage to fetch and convert to text (must include http:// or https://)
         required: true
       dump_options:
         description: Additional lynx options (e.g., -width=100, -nolist, -source)
