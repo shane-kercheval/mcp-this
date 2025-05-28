@@ -155,13 +155,17 @@ tools:
 
   extract-file-text:
     description: |
-      Display contents of a file with optional line numbers or filtering
+      Display contents of a file with line numbers and optional post-processing filters
+      
+      Note: The arguments parameter is for pipe operations only (post-processing), not cat options.
       
       Examples:
         - extract_file_text(file="/path/to/script.py")  # view entire file with line numbers
         - extract_file_text(file="/path/to/script.py", arguments="| sed -n '10,20p'")  # view only lines 10-20
         - extract_file_text(file="/path/to/config.json", arguments="| python3 -m json.tool")  # pretty-print JSON file
         - extract_file_text(file="/path/to/error.log", arguments="| grep ERROR")  # filter file to show only ERROR lines
+        - extract_file_text(file="/path/to/data.txt", arguments="| head -20")  # show first 20 lines
+        - extract_file_text(file="/path/to/log.txt", arguments="| tail -50 | grep WARN")  # show last 50 lines, then filter warnings
       
         Output Example:
         1  def main():
@@ -177,7 +181,7 @@ tools:
         description: Path to the file to display (quotes are handled automatically in the command)
         required: true
       arguments:
-        description: Additional processing options (e.g., "| sed -n '10,20p'" to show specific line range, "| python3 -m json.tool" to format JSON)
+        description: Post-processing pipe operations only (e.g., "| sed -n '10,20p'" to show specific line range, "| python3 -m json.tool" to format JSON, "| grep ERROR" to filter lines). Do NOT use for cat options like -n or -b.
         required: false
 
   extract-code-info:
