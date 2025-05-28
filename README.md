@@ -103,6 +103,7 @@ The MCP Server can be configured to use:
 |--------|-------------|-------|
 | **default** | Safe, read-only tools for analysis and information gathering | Used automatically when no config specified, or explicitly with `--preset default` |
 | **editing** | File and directory editing tools for development workflows | `--preset editing` |
+| **github** | GitHub integration tools for PR analysis and repository operations | `--preset github` |
 
 ## Claude Desktop Integration
 
@@ -148,9 +149,28 @@ For development workflows requiring file editing capabilities:
 }
 ```
 
-#### Both Presets Together
+#### GitHub Tools
 
-You can run both presets simultaneously for maximum functionality:
+For GitHub integration and PR analysis:
+
+```json
+{
+  "mcpServers": {
+    "mcp-this-github": {
+      "command": "uvx",
+      "args": ["mcp-this", "--preset", "github"]
+    }
+  }
+}
+```
+
+> **Note:** Requires GitHub CLI (gh) to be installed and authenticated.
+> Install with: `brew install gh` (macOS) or see https://cli.github.com/
+> Authenticate with: `gh auth login`
+
+#### Multiple Presets Together
+
+You can run multiple presets simultaneously for maximum functionality:
 
 ```json
 {
@@ -162,6 +182,10 @@ You can run both presets simultaneously for maximum functionality:
     "mcp-this-editing": {
       "command": "uvx",
       "args": ["mcp-this", "--preset", "editing"]
+    },
+    "mcp-this-github": {
+      "command": "uvx",
+      "args": ["mcp-this", "--preset", "github"]
     }
   }
 }
@@ -349,6 +373,18 @@ The editing preset provides powerful file and directory manipulation tools:
 | **edit-file** | Modify files with precise control (insert, replace, delete) |
 | **create-directory** | Create new directories or directory structures |
 
+### GitHub Preset Tools (GitHub Integration)
+
+The github preset provides GitHub integration and analysis tools:
+
+| Tool | Description |
+|------|-------------|
+| **get-github-pull-request-info** | Get comprehensive PR information including overview, files changed, and complete diff |
+
+> **Note:** Requires GitHub CLI (gh) to be installed and authenticated.
+> Install with: `brew install gh` (macOS) or see https://cli.github.com/
+> Authenticate with: `gh auth login`
+
 ### Default Tool Dependencies
 
 For the default tools to work correctly, install the following dependencies:
@@ -443,7 +479,7 @@ You can provide configuration in several ways:
 
 | Method | Example |
 |--------|---------|
-| **Built-in Preset** | `--preset editing` |
+| **Built-in Preset** | `--preset editing`, `--preset github`, `--preset default` |
 | **Config File Path** | `--tools_path /path/to/config.yaml` |
 | **Config Value String** | `--tools '{"tools": {...}}'` |
 | **Environment Variable** | `MCP_THIS_CONFIG_PATH=/path/to/config.yaml` |

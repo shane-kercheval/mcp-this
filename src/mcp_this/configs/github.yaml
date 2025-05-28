@@ -1,0 +1,36 @@
+tools:
+  get-github-pull-request-info:
+    description: |
+      Get comprehensive information about a GitHub Pull Request including overview, files changed, and cumulative diff
+      
+      This tool fetches PR details, shows which files were modified with addition/deletion counts, 
+      and displays the complete diff showing the final changes the PR makes to the codebase.
+      
+      Examples:
+        - get_pr_info(pr_url="https://github.com/microsoft/vscode/pull/12345")
+        - get_pr_info(pr_url="https://github.com/facebook/react/pull/6789")
+        - get_pr_info(pr_url="https://github.com/your-org/your-repo/pull/42")
+        - get_pr_info(pr_url="https://github.com/shane-kercheval/mcp-this/pull/2")
+      
+      Output includes:
+      - PR title, description, status, and metadata
+      - Summary of files changed with addition/deletion counts
+      - Complete cumulative diff showing all changes
+    execution:
+      command: >-
+        PR_URL="<<pr_url>>" &&
+        if [[ "$PR_URL" =~ github\.com/([^/]+)/([^/]+)/pull/([0-9]+) ]]; then
+        OWNER="${BASH_REMATCH[1]}" &&
+        REPO="${BASH_REMATCH[2]}" &&
+        PR_NUMBER="${BASH_REMATCH[3]}" &&
+        echo "=== PR Overview ===" &&
+        gh pr view "$PR_URL" &&
+        printf "\n\n=== Files Changed (Summary) ===\n" &&
+        gh api "repos/$OWNER/$REPO/pulls/$PR_NUMBER/files" | jq -r '.[] | (.filename + " (+" + (.additions|tostring) + "/-" + (.deletions|tostring) + ") [" + .status + "]")' &&
+        printf "\n\n=== File Changes ===\n" &&
+        gh pr diff "$PR_URL"; else
+        echo "Error: Invalid GitHub PR URL format. Expected: https://github.com/owner/repo/pull/NUMBER"; fi
+    parameters:
+      pr_url:
+        description: GitHub Pull Request URL (e.g., https://github.com/owner/repo/pull/123)
+        required: true
