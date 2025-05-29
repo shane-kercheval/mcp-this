@@ -1,0 +1,60 @@
+tools:
+  echo:
+    description: Simple echo tool for testing
+    execution:
+      command: echo "<<message>>"
+    parameters:
+      message:
+        description: Message to echo
+        required: true
+
+prompts:
+  simple-greeting:
+    description: Generate a personalized greeting message
+    template: |
+      Generate a warm, friendly greeting for {{name}}.
+      {{#if occasion}}The greeting is for {{occasion}}.{{/if}}
+      {{#if tone}}Use a {{tone}} tone.{{/if}}
+      
+      Make it personal and engaging.
+    arguments:
+      name:
+        description: Name of the person to greet
+        required: true
+      occasion:
+        description: Special occasion (optional)
+        required: false
+      tone:
+        description: Tone of the greeting (e.g., formal, casual, enthusiastic)
+        required: false
+
+  explain-code:
+    description: Generate an explanation for code snippets
+    template: |
+      Please explain the following code in simple terms:
+
+      ```{{#if language}}{{language}}{{/if}}
+      {{code}}
+      ```
+
+      {{#if audience}}Target audience: {{audience}}{{/if}}
+      {{#if focus}}Focus on: {{focus}}{{/if}}
+
+      Provide:
+      1. What the code does overall
+      2. Key components and their purpose
+      3. How it works step by step
+      4. Any important concepts or patterns used
+    arguments:
+      code:
+        description: The code to explain
+        required: true
+      language:
+        description: Programming language (optional, auto-detected if not provided)
+        required: false
+      audience:
+        description: Target audience (e.g., beginner, intermediate, expert)
+        required: false
+      focus:
+        description: Specific aspects to focus on (e.g., performance, security, design patterns)
+        required: false

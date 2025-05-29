@@ -191,9 +191,12 @@ class TestValidateConfig:
             validate_config([])
 
     def test_validate_config_missing_sections(self):
-        """Test validating a config missing tools section."""
+        """Test validating a config missing tools and prompts sections."""
         # Assert that ValueError is raised
-        with pytest.raises(ValueError, match="Configuration must contain a 'tools' section"):
+        with pytest.raises(
+            ValueError,
+            match="Configuration must contain a 'tools' and/or 'prompts' section",
+        ):
             validate_config({"other_section": {}})
 
     def test_validate_config_tools_not_dict(self):

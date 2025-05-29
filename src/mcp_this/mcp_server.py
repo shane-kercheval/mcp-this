@@ -10,7 +10,9 @@ import json
 from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 import sys
+from collections.abc import Callable
 from mcp_this.tools import ToolInfo, build_command, execute_command, parse_tools
+from mcp_this.prompts import PromptInfo, parse_prompts
 
 
 mcp = FastMCP("Dynamic CLI Tools")
@@ -99,16 +101,26 @@ def validate_config(config: dict) -> None:
     if not isinstance(config, dict):
         raise ValueError("Configuration must be a dictionary")
 
-    # Check if we have a tools section
-    if 'tools' not in config:
-        raise ValueError("Configuration must contain a 'tools' section")
+    # Check if we have at least a tools or prompts section
+    if 'tools' not in config and 'prompts' not in config:
+        raise ValueError("Configuration must contain a 'tools' and/or 'prompts' section")
 
-    # Validate tools section
-    if not isinstance(config['tools'], dict):
-        raise ValueError("'tools' must be a dictionary")
+    # Validate tools section if present
+    if 'tools' in config:
+        if not isinstance(config['tools'], dict):
+            raise ValueError("'tools' must be a dictionary")
 
-    for tool_name, tool_config in config['tools'].items():
-        validate_tool_config(tool_name, tool_config)
+        for tool_name, tool_config in config['tools'].items():
+            validate_tool_config(tool_name, tool_config)
+
+    # Validate prompts section if present
+    if 'prompts' in config:
+        from mcp_this.prompts import validate_prompt_config
+        if not isinstance(config['prompts'], dict):
+            raise ValueError("'prompts' must be a dictionary")
+
+        for prompt_name, prompt_config in config['prompts'].items():
+            validate_prompt_config(prompt_name, prompt_config)
 
 
 def validate_tool_config(tool_id: str, tool_config: dict) -> None:
@@ -164,6 +176,88 @@ def register_parsed_tools(tools_info: list[ToolInfo]) -> None:
             traceback.print_exc()
 
 
+def register_prompts(prompts_info: list[PromptInfo]) -> None:
+    """
+    Register prompts with MCP based on parsed prompt information.
+
+    Args:
+        prompts_info: List of PromptInfo objects from parse_prompts().
+    """
+    for prompt_info in prompts_info:
+        try:
+            # Create prompt handler function dynamically
+            def create_prompt_handler(prompt_info: PromptInfo) -> Callable:
+                import re
+
+                # Create a simple template renderer
+                def render_template(template: str, kwargs: dict) -> str:
+                    # Simple template rendering - replace {{variable}} with values
+                    for arg_name, arg_value in kwargs.items():
+                        if arg_value:  # Only replace if value is provided
+                            template = template.replace("{{" + arg_name + "}}", str(arg_value))
+
+                    # Process {{#if variable}}content{{/if}} blocks
+                    def handle_if_block(match: re.Match) -> str:
+                        var_name = match.group(1)
+                        content = match.group(2)
+                        # Include content if variable exists and is not empty
+                        if kwargs.get(var_name):
+                            return content
+                        return ""
+
+                    # Replace {{#if variable}}content{{/if}} blocks
+                    template = re.sub(
+                        r'\{\{#if (\w+)\}\}(.*?)\{\{/if\}\}',
+                        handle_if_block,
+                        template,
+                        flags=re.DOTALL,
+                    )
+
+                    # Clean up any remaining unfilled variables
+                    template = re.sub(r'\{\{\w+\}\}', '', template)
+
+                    return template.strip()
+
+                # Build function signature dynamically based on prompt arguments
+                required_args = []
+                optional_args = []
+
+                for arg_name, arg_info in prompt_info.arguments.items():
+                    if arg_info.required:
+                        required_args.append(arg_name)
+                    else:
+                        optional_args.append(f"{arg_name}: str = ''")
+
+                # Create function signature
+                sig_parts = required_args + optional_args
+                signature = ", ".join(sig_parts)
+
+                # Create the actual handler function
+                func_code = (
+                    f"async def handler({signature}) -> str:\n"
+                    "    return render_template(template, locals())"
+                )
+
+                # Create namespace with the template and renderer
+                namespace = {
+                    "template": prompt_info.template,
+                    "render_template": render_template,
+                }
+
+                # Execute the function definition
+                exec(func_code, namespace)
+
+                # Return the created function
+                return namespace["handler"]
+
+            # Create and register the prompt handler
+            handler = create_prompt_handler(prompt_info)
+            mcp.prompt(name=prompt_info.name)(handler)
+        except Exception:
+            import traceback
+            traceback.print_exc()
+
+
 def register_tools(config: dict) -> None:
     """
     Register tools from configuration.
@@ -173,6 +267,23 @@ def register_tools(config: dict) -> None:
     """
     tools_info = parse_tools(config)
     register_parsed_tools(tools_info)
+
+
+def register_all(config: dict) -> None:
+    """
+    Register both tools and prompts from configuration.
+
+    Args:
+        config: The configuration dictionary.
+    """
+    # Register tools if present
+    if 'tools' in config:
+        register_tools(config)
+
+    # Register prompts if present
+    if 'prompts' in config:
+        prompts_info = parse_prompts(config)
+        register_prompts(prompts_info)
 
 
 def init_server(tools_path: str | None = None, tools: str | None = None) -> None:
@@ -193,7 +304,7 @@ def init_server(tools_path: str | None = None, tools: str | None = None) -> None
     """
     config = load_config(tools_path, tools)
     validate_config(config)
-    register_tools(config)
+    register_all(config)
 
 
 def run_server() -> None:
