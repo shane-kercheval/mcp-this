@@ -72,28 +72,28 @@ tools:
         echo "=== Untracked Files ===" &&
         TRACKED_FILES=$(mktemp) &&
         git ls-files --others --exclude-standard > "$TRACKED_FILES" &&
-        if [ ! -s "$TRACKED_FILES" ]; then 
-          echo "No untracked files"; 
-        else 
-          while IFS= read -r file; do 
-            if [ -f "$file" ]; then 
-              FILE_SIZE=$(wc -c < "$file" 2>/dev/null || echo 0) && 
-              case "$file" in 
-                *.jpg|*.jpeg|*.png|*.gif|*.pdf|*.zip|*.tar|*.gz|*.exe|*.bin|*.so|*.pyc|*.class|*.o) 
-                  echo "Binary file: $file (${FILE_SIZE} bytes, skipped)" ;; 
-                *) 
-                  if [ "$FILE_SIZE" -gt 102400 ]; then 
-                    echo "Large file: $file (${FILE_SIZE} bytes, >100KB, skipped)"; 
-                  else 
-                    echo "=== New file: $file (${FILE_SIZE} bytes) ==="; 
-                    cat "$file" 2>/dev/null; 
-                  fi ;; 
-              esac; 
-            else 
-              echo "Directory/Special: $file"; 
-            fi; 
-            echo ""; 
-          done < "$TRACKED_FILES"; 
+        if [ ! -s "$TRACKED_FILES" ]; then
+          echo "No untracked files";
+        else
+          while IFS= read -r file; do
+            if [ -f "$file" ]; then
+              FILE_SIZE=$(wc -c < "$file" 2>/dev/null || echo 0) &&
+              case "$file" in
+                *.jpg|*.jpeg|*.png|*.gif|*.pdf|*.zip|*.tar|*.gz|*.exe|*.bin|*.so|*.pyc|*.class|*.o)
+                  echo "Binary file: $file (${FILE_SIZE} bytes, skipped)" ;;
+                *)
+                  if [ "$FILE_SIZE" -gt 102400 ]; then
+                    echo "Large file: $file (${FILE_SIZE} bytes, >100KB, skipped)";
+                  else
+                    echo "=== New file: $file (${FILE_SIZE} bytes) ===" &&
+                    cat "$file" 2>/dev/null;
+                  fi ;;
+              esac;
+            else
+              echo "Directory/Special: $file";
+            fi &&
+            echo "";
+          done < "$TRACKED_FILES";
         fi &&
         rm -f "$TRACKED_FILES"
     parameters:
