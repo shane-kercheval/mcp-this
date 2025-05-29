@@ -39,85 +39,129 @@ prompts:
   create-pr-description:
     description: Generate a comprehensive pull request description based on the changes made
     template: |
-      Generate a comprehensive pull request description for the following changes:
+      # PR Description Prompt
 
-      **Changes Made:**
+      You are writing a pull request description in markdown. Create a clear, concise description that helps reviewers understand the changes without speculation or unnecessary detail.
+
+      ## Guidelines
+
+      **✅ Do:**
+      - State what was changed and why
+      - Include relevant technical details that affect review
+      - Mention breaking changes, new dependencies, or deployment considerations
+      - Reference related issues/tickets with links if provided/available
+      - Note testing approach and any areas needing special attention
+
+      **❌ Don't:**
+      - Speculate about future improvements or alternative approaches
+      - Include verbose explanations of obvious changes
+      - Add motivational language or unnecessary context
+      - List every single file changed
+      - Include implementation details visible in the code
+
+      ## Format
+
+      Use this structure (skip sections that don't apply):
+
+      ```markdown
+      ## Summary
+    
+      [Brief description of what this PR does]
+
+      ## Changes
+    
+      - [Key change 1]
+      - [Key change 2]
+      - [Key change 3]
+
+      ## Testing
+    
+      [How was this tested?]
+
+      ## Impact
+    
+      [Breaking changes, new dependencies, deployment considerations, or "No breaking changes"]
+      ```
+
+      Keep it scannable and focused on what reviewers need to know to do their job effectively.
+
+      ---
+
+      # Changes
+
+      **Note:** If the following contains a URL, file path, or instructions to fetch information, use the appropriate tool to retrieve the content before writing the PR description.
+
+      **Changes to describe:**
+
+      ```
       {{changes}}
-
-      {{#if issue_number}}
-      **Related Issue:** {{issue_number}}
-      {{/if}}
-
-      {{#if breaking_changes}}
-      **Breaking Changes:**
-      {{breaking_changes}}
-      {{/if}}
-
-      {{#if additional_context}}
-      **Additional Context:**
-      {{additional_context}}
-      {{/if}}
-
-      Please create a well-structured PR description that includes:
-      1. A clear, concise title
-      2. Summary of what was changed and why
-      3. Any testing that was done
-      4. Notes for reviewers
-      5. Any deployment considerations
-
-      Format the response as a proper GitHub PR description with appropriate markdown formatting.
+      ```
     arguments:
       changes:
         description: Summary of the changes made in this PR
         required: true
-      issue_number:
-        description: Related issue number (optional, e.g., "closes #123")
-        required: false
-      breaking_changes:
-        description: Any breaking changes introduced (optional)
-        required: false
-      additional_context:
-        description: Any additional context or notes about the PR
-        required: false
 
   code-review:
     description: Perform a thorough code review focusing on best practices, security, and maintainability
     template: |
-      Please perform a comprehensive code review of the following code:
+      # Code Review Request
 
-      **Code to Review:**
+      You are conducting a thorough but practical code review. Focus on issues that meaningfully impact code quality, functionality, and maintainability. Provide clear, actionable feedback that helps ship better software.
+
+      ## Focus Areas
+
+      **High Priority:**
+      - **Functionality & Logic**: Does the code work as intended? Are there bugs or edge cases?
+      - **Security**: Any potential vulnerabilities or unsafe practices?
+      - **Performance**: Significant inefficiencies or scalability concerns?
+      - **Maintainability**: Is the code readable and well-structured for future developers?
+
+      **Medium Priority:**
+      - **Testing**: Are there obvious gaps in test coverage for critical paths?
+      - **Error Handling**: Are errors handled appropriately?
+      - **Documentation**: Are complex sections adequately explained?
+      - **Code Organization**: Does the structure make sense?
+
+      ## Review Guidelines
+
+      ✅ **Do:**
+      - Explain the "why" behind your suggestions
+      - Offer specific, actionable recommendations
+      - Acknowledge good practices you notice
+      - Consider the broader context and constraints
+      - Suggest alternatives when pointing out issues
+
+      ❌ **Don't:**
+      - Nitpick minor style issues if they follow project conventions
+      - Insist on changes that don't meaningfully improve the code
+      - Focus on personal preferences over objective improvements
+      - Overwhelm with too many minor suggestions
+      {{#if focus_areas}}
+      ## Focus Areas:
       
-      ```{{#if language}}{{language}}{{/if}}
+      {{focus_areas}}
+      {{/if}}
+      ## Response Format
+
+      Organize your feedback as:
+
+      - Critical Issues (bugs, security vulnerabilities, major logic flaws)
+      - Improvements (unit tests, performance, maintainability, error handling - in order of impact)
+      - Minor Notes (only if they meaningfully affect code quality)
+
+      Keep it concise and actionable. Skip the summary unless there's something important to highlight about the overall approach.
+
+      # Code to review:
+
+      Note: if the following is a url or instructions, please fetch the information with the appropriate tool.
+
+      ```
       {{code}}
       ```
-
-      {{#if focus_areas}}
-      **Focus Areas:** {{focus_areas}}
-      {{/if}}
-
-      {{#if context}}
-      **Context:** {{context}}
-      {{/if}}
-
-      Please provide a thorough review covering:
-      1. **Code Quality:** Structure, readability, maintainability
-      2. **Best Practices:** Language-specific conventions and patterns
-      3. **Security:** Potential vulnerabilities or security concerns
-      4. **Performance:** Efficiency and optimization opportunities
-      5. **Testing:** Testability and potential edge cases
-      6. **Documentation:** Code comments and documentation needs
-
-      Format your response with clear sections and provide specific, actionable feedback with examples where helpful.
     arguments:
       code:
         description: The code to review (can be a diff, file content, or code snippet)
         required: true
       focus_areas:
         description: Specific areas to focus on (e.g., "security, performance, readability")
-        required: false
-      language:
-        description: Programming language of the code (optional, will be auto-detected if not provided)
-        required: false
-      context:
-        description: Additional context about the code's purpose or constraints
         required: false
