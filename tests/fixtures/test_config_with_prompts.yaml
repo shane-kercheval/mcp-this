@@ -1,0 +1,24 @@
+tools:
+  tool:
+    description: A test tool
+    execution:
+      command: echo Hello, <<name>>!
+    parameters:
+      name:
+        description: Your name
+        required: false
+
+prompts:
+  test-prompt:
+    description: A test prompt for unit testing
+    template: |
+      This is a test prompt for {{subject}}.
+      {{#if details}}Additional details: {{details}}{{/if}}
+      Please provide a response.
+    arguments:
+      subject:
+        description: The subject to test
+        required: true
+      details:
+        description: Optional additional details
+        required: false

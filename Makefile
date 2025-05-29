@@ -34,6 +34,12 @@ mcp_install_custom: ## Install the MCP server with a custom config (path in CONF
 mcp_test: ## Run the sample test server
 	uv run mcp dev ./src/mcp_this/test_server.py
 
+
+mcp_inspector_github:
+	npx @modelcontextprotocol/inspector \
+		uv run -m mcp_this \
+		--tools_path /Users/shanekercheval/repos/mcp-this/src/mcp_this/configs/github.yaml
+
 ####
 # Testing
 ####

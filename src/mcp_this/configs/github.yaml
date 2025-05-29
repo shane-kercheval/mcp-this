@@ -34,3 +34,90 @@ tools:
       pr_url:
         description: GitHub Pull Request URL (e.g., https://github.com/owner/repo/pull/123)
         required: true
+
+prompts:
+  create-pr-description:
+    description: Generate a comprehensive pull request description based on the changes made
+    template: |
+      Generate a comprehensive pull request description for the following changes:
+
+      **Changes Made:**
+      {{changes}}
+
+      {{#if issue_number}}
+      **Related Issue:** {{issue_number}}
+      {{/if}}
+
+      {{#if breaking_changes}}
+      **Breaking Changes:**
+      {{breaking_changes}}
+      {{/if}}
+
+      {{#if additional_context}}
+      **Additional Context:**
+      {{additional_context}}
+      {{/if}}
+
+      Please create a well-structured PR description that includes:
+      1. A clear, concise title
+      2. Summary of what was changed and why
+      3. Any testing that was done
+      4. Notes for reviewers
+      5. Any deployment considerations
+
+      Format the response as a proper GitHub PR description with appropriate markdown formatting.
+    arguments:
+      changes:
+        description: Summary of the changes made in this PR
+        required: true
+      issue_number:
+        description: Related issue number (optional, e.g., "closes #123")
+        required: false
+      breaking_changes:
+        description: Any breaking changes introduced (optional)
+        required: false
+      additional_context:
+        description: Any additional context or notes about the PR
+        required: false
+
+  code-review:
+    description: Perform a thorough code review focusing on best practices, security, and maintainability
+    template: |
+      Please perform a comprehensive code review of the following code:
+
+      **Code to Review:**
+      
+      ```{{#if language}}{{language}}{{/if}}
+      {{code}}
+      ```
+
+      {{#if focus_areas}}
+      **Focus Areas:** {{focus_areas}}
+      {{/if}}
+
+      {{#if context}}
+      **Context:** {{context}}
+      {{/if}}
+
+      Please provide a thorough review covering:
+      1. **Code Quality:** Structure, readability, maintainability
+      2. **Best Practices:** Language-specific conventions and patterns
+      3. **Security:** Potential vulnerabilities or security concerns
+      4. **Performance:** Efficiency and optimization opportunities
+      5. **Testing:** Testability and potential edge cases
+      6. **Documentation:** Code comments and documentation needs
+
+      Format your response with clear sections and provide specific, actionable feedback with examples where helpful.
+    arguments:
+      code:
+        description: The code to review (can be a diff, file content, or code snippet)
+        required: true
+      focus_areas:
+        description: Specific areas to focus on (e.g., "security, performance, readability")
+        required: false
+      language:
+        description: Programming language of the code (optional, will be auto-detected if not provided)
+        required: false
+      context:
+        description: Additional context about the code's purpose or constraints
+        required: false

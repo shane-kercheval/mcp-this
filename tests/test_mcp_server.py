@@ -96,6 +96,40 @@ class TestMCPServer:
             assert tools.tools
             assert 'get-directory-tree' in [tool.name for tool in tools.tools]
 
+    @pytest.mark.asyncio
+    async def test_list_prompts(self):
+        """Test that prompts are properly registered and can be listed."""
+        config_path = Path(__file__).parent / "fixtures" / "test_config_with_prompts.yaml"
+        server_params = StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_this", "--tools_path", str(config_path)],
+        )
+        async with stdio_client(server_params) as (read, write), ClientSession(read, write) as session:  # noqa: E501
+            await session.initialize()
+            prompts = await session.list_prompts()
+            assert prompts.prompts  # Check that the prompts list is not empty
+            prompt_names = [p.name for p in prompts.prompts]
+            assert "test-prompt" in prompt_names
+
+    @pytest.mark.asyncio
+    async def test_get_prompt(self):
+        """Test that a prompt can be retrieved and returns expected content."""
+        config_path = Path(__file__).parent / "fixtures" / "test_config_with_prompts.yaml"
+        server_params = StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_this", "--tools_path", str(config_path)],
+        )
+        async with stdio_client(server_params) as (read, write), ClientSession(read, write) as session:  # noqa: E501
+            await session.initialize()
+            # Test getting a prompt with arguments
+            result = await session.get_prompt(
+                "test-prompt", {"subject": "testing", "details": "with details"},
+            )
+            assert result.messages
+            content = result.messages[0].content.text
+            assert "This is a test prompt for testing." in content
+            assert "Additional details: with details" in content
+
 
 class TestBuildCommand:
     """Test cases for the build_command function."""
@@ -821,7 +855,9 @@ class TestValidateConfig:
         invalid_config = {
             "other_section": {},
         }
-        with pytest.raises(ValueError, match="Configuration must contain a 'tools'"):
+        with pytest.raises(
+            ValueError, match="Configuration must contain a 'tools' and/or 'prompts' section",
+        ):
             validate_config(invalid_config)
 
     def test_validate_invalid_tool_config(self):
