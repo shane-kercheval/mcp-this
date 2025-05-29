@@ -212,6 +212,26 @@ You should now see your configured MCP server(s):
 > - Ensure `uvx` is in your `PATH` or use the full path (e.g., `/Users/<username>/.local/bin/uvx`)
 > - Check that dependencies for tools are installed (see [Default Tool Dependencies](#default-tool-dependencies))
 
+### Using Prompts in Claude Desktop
+
+Some presets (like GitHub) include specialized prompts for development workflows. To use prompts in Claude Desktop:
+
+1. **Click the `+` icon** in the message input box
+2. **Select "Add from [mcp server]"** (e.g., "Add from mcp-this-github")
+3. **Choose the prompt** you want to use:
+   - **create-pr-description**: Generate comprehensive PR descriptions from code changes
+   - **code-review**: Perform thorough code reviews focusing on best practices and security
+4. **Provide the required input**: You can enter:
+   - Code snippets or diffs
+   - GitHub PR URLs (the prompt will fetch the information automatically)
+   - Local directory paths for analysis
+   - File paths to specific files
+
+**Example workflow:**
+- Use `get-local-git-changes-info` tool to analyze your local Git changes
+- Use `create-pr-description` prompt with the output to generate a PR description
+- Use `code-review` prompt to review code before submitting
+
 ### Creating Custom Tools with YAML
 
 **Step 1:** Create a file called `custom_tools.yaml` with these contents:
@@ -380,6 +400,16 @@ The github preset provides GitHub integration and analysis tools:
 | Tool | Description |
 |------|-------------|
 | **get-github-pull-request-info** | Get comprehensive PR information including overview, files changed, and complete diff |
+| **get-local-git-changes-info** | Get comprehensive information about local Git changes including status, diffs, and untracked files |
+
+### GitHub Preset Prompts
+
+The github preset also includes specialized prompts for development workflows:
+
+| Prompt | Description |
+|--------|-------------|
+| **create-pr-description** | Generate comprehensive pull request descriptions from code changes, diffs, or PR URLs |
+| **code-review** | Perform thorough code reviews focusing on best practices, security, and maintainability |
 
 > **Note:** Requires GitHub CLI (gh) to be installed and authenticated.
 > Install with: `brew install gh` (macOS) or see https://cli.github.com/
@@ -537,3 +567,39 @@ uv add <package> --group dev
 ## License
 
 [Apache License 2.0](LICENSE)
+
+# Security Considerations
+
+⚠️ **Important Security Notice**: This MCP server executes shell commands based on configuration files and user input. Please read and understand these security implications before deploying.
+
+## Overview
+
+`mcp-this` is designed to expose CLI tools through MCP by executing shell commands. While this provides powerful functionality, it also introduces security considerations that must be carefully managed, especially in multi-user or production environments.
+
+## Key Security Risks
+
+### 1. **Command Injection**
+- **Risk**: The server executes shell commands constructed from user input and configuration templates
+- **Impact**: Malicious users could potentially execute arbitrary system commands
+- **Mitigation**: 
+  - Only use trusted configuration files
+  - Validate and sanitize all user inputs
+  - Run the server with minimal privileges
+  - Consider using containerization or sandboxing
+
+### 2. **File System Access**
+- **Risk**: Tools can read, write, and modify files based on provided parameters
+- **Impact**: Unauthorized access to sensitive files or system modification
+- **Mitigation**:
+  - Run with restricted user permissions
+  - Use chroot jails or containers
+  - Carefully review tool configurations for dangerous operations
+  - Monitor file system access
+
+### 3. **Resource Consumption**
+- **Risk**: Commands may consume excessive CPU, memory, or disk resources
+- **Impact**: System performance degradation or denial of service
+- **Mitigation**:
+  - Implement resource limits (ulimit, cgroups)
+  - Monitor command execution
+  - Set appropriate timeouts

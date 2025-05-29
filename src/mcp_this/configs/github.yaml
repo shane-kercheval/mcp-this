@@ -35,7 +35,7 @@ tools:
         description: GitHub Pull Request URL (e.g., https://github.com/owner/repo/pull/123)
         required: true
 
-  get-local-changes-info:
+  get-local-git-changes-info:
     description: |
       Get comprehensive information about local Git changes including overview and diffs
       
@@ -43,10 +43,10 @@ tools:
       of binary files, large files, and automatic .gitignore support.
       
       Examples:
-        - get_local_changes_info(directory="/path/to/repo")  # analyze specific repository
-        - get_local_changes_info(directory=".")  # analyze current directory
-        - get_local_changes_info(directory="/home/user/myproject")  # full path to project
-        - get_local_changes_info(directory="~/code/webapp")  # relative to home directory
+        - get_local_git_changes_info(directory="/path/to/repo")  # analyze specific repository
+        - get_local_git_changes_info(directory=".")  # analyze current directory
+        - get_local_git_changes_info(directory="/home/user/myproject")  # full path to project
+        - get_local_git_changes_info(directory="~/code/webapp")  # relative to home directory
       
       Output includes:
       - Git status showing modified, staged, and untracked files

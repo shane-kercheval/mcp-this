@@ -419,24 +419,24 @@ class GitTestRepo:
 
 @pytest.mark.asyncio
 class TestGetLocalChangesInfo:
-    """Test the get-local-changes-info tool."""
+    """Test the get-local-git-changes-info tool."""
 
     async def test_tool_registration(self, server_params: StdioServerParameters):
-        """Test that the get-local-changes-info tool is properly registered."""
+        """Test that the get-local-git-changes-info tool is properly registered."""
         async with stdio_client(server_params) as (read, write), ClientSession(
             read, write,
         ) as session:
             await session.initialize()
             tools = await session.list_tools()
 
-            # Find the get-local-changes-info tool
+            # Find the get-local-git-changes-info tool
             local_changes_tool = None
             for tool in tools.tools:
-                if tool.name == "get-local-changes-info":
+                if tool.name == "get-local-git-changes-info":
                     local_changes_tool = tool
                     break
 
-            assert local_changes_tool is not None, "get-local-changes-info tool not found"
+            assert local_changes_tool is not None, "get-local-git-changes-info tool not found"
             assert "directory" in local_changes_tool.inputSchema["properties"]
             assert "directory" in local_changes_tool.inputSchema["required"]
 
@@ -456,7 +456,7 @@ class TestGetLocalChangesInfo:
                 await session.initialize()
 
                 result = await session.call_tool(
-                    "get-local-changes-info",
+                    "get-local-git-changes-info",
                     {"directory": repo_dir},
                 )
 
@@ -495,7 +495,7 @@ class TestGetLocalChangesInfo:
                 await session.initialize()
 
                 result = await session.call_tool(
-                    "get-local-changes-info",
+                    "get-local-git-changes-info",
                     {"directory": repo_dir},
                 )
 
@@ -530,7 +530,7 @@ class TestGetLocalChangesInfo:
                 await session.initialize()
 
                 result = await session.call_tool(
-                    "get-local-changes-info",
+                    "get-local-git-changes-info",
                     {"directory": repo_dir},
                 )
 
@@ -571,7 +571,7 @@ class TestGetLocalChangesInfo:
                 await session.initialize()
 
                 result = await session.call_tool(
-                    "get-local-changes-info",
+                    "get-local-git-changes-info",
                     {"directory": repo_dir},
                 )
 
@@ -609,7 +609,7 @@ class TestGetLocalChangesInfo:
                 await session.initialize()
 
                 result = await session.call_tool(
-                    "get-local-changes-info",
+                    "get-local-git-changes-info",
                     {"directory": repo_dir},
                 )
 
@@ -645,7 +645,7 @@ class TestGetLocalChangesInfo:
                 await session.initialize()
 
                 result = await session.call_tool(
-                    "get-local-changes-info",
+                    "get-local-git-changes-info",
                     {"directory": repo_dir},
                 )
 
@@ -683,7 +683,7 @@ class TestGetLocalChangesInfo:
                 await session.initialize()
 
                 result = await session.call_tool(
-                    "get-local-changes-info",
+                    "get-local-git-changes-info",
                     {"directory": repo_dir},
                 )
 
@@ -723,7 +723,7 @@ class TestGetLocalChangesInfo:
                 await session.initialize()
 
                 result = await session.call_tool(
-                    "get-local-changes-info",
+                    "get-local-git-changes-info",
                     {"directory": repo_dir},
                 )
 
@@ -755,7 +755,7 @@ class TestGetLocalChangesInfo:
                 await session.initialize()
 
                 result = await session.call_tool(
-                    "get-local-changes-info",
+                    "get-local-git-changes-info",
                     {"directory": temp_dir},
                 )
 
@@ -778,7 +778,7 @@ class TestGetLocalChangesInfo:
             non_existent_path = "/path/that/definitely/does/not/exist/anywhere"
 
             result = await session.call_tool(
-                "get-local-changes-info",
+                "get-local-git-changes-info",
                 {"directory": non_existent_path},
             )
 
@@ -813,7 +813,7 @@ class TestGetLocalChangesInfo:
                 await session.initialize()
 
                 result = await session.call_tool(
-                    "get-local-changes-info",
+                    "get-local-git-changes-info",
                     {"directory": repo_dir},
                 )
 
@@ -849,7 +849,7 @@ class TestGetLocalChangesInfo:
                 await session.initialize()
 
                 result = await session.call_tool(
-                    "get-local-changes-info",
+                    "get-local-git-changes-info",
                     {"directory": repo_dir},
                 )
 
@@ -886,7 +886,7 @@ class TestGetLocalChangesInfo:
                 await session.initialize()
 
                 result = await session.call_tool(
-                    "get-local-changes-info",
+                    "get-local-git-changes-info",
                     {"directory": repo_dir},
                 )
 
@@ -928,7 +928,7 @@ class TestGetLocalChangesInfo:
                 await session.initialize()
 
                 result = await session.call_tool(
-                    "get-local-changes-info",
+                    "get-local-git-changes-info",
                     {"directory": repo_dir},
                 )
 

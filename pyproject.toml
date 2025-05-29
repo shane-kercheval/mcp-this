@@ -1,6 +1,6 @@
 [project]
 name = "mcp-this"
-version = "0.0.15"
+version = "0.0.16"
 description = "MCP Server that exposes CLI commands as tools for Claude using YAML configuration files"
 readme = "README.md"
 requires-python = ">=3.11"
