@@ -117,6 +117,7 @@ prompts:
       - Mention breaking changes, new dependencies, or deployment considerations
       - Reference related issues/tickets with links if provided/available
       - Note testing approach and any areas needing special attention
+      - Alert the reader to any leaked information, tokens, secrets, or sensitive data.
 
       **❌ Don't:**
       - Speculate about future improvements or alternative approaches
@@ -179,6 +180,7 @@ prompts:
       **High Priority:**
       - **Functionality & Logic**: Does the code work as intended? Are there bugs or edge cases?
       - **Security**: Any potential vulnerabilities or unsafe practices?
+      - **Leaked Information**: Are there any secrets, tokens, or sensitive data exposed?
       - **Performance**: Significant inefficiencies or scalability concerns?
       - **Maintainability**: Is the code readable and well-structured for future developers?
 
