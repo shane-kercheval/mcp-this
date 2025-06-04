@@ -72,7 +72,7 @@ If the file above was saved to `/path/to/your/custom_tools.yaml`, the correspond
       "command": "uvx",
       "args": [
         "mcp-this",
-        "--tools_path", "/path/to/your/custom_tools.yaml"
+        "--config-path", "/path/to/your/custom_tools.yaml"
       ]
     }
   }
@@ -93,8 +93,8 @@ The simplest way to use the server is via `uvx`. This command lets you run Pytho
 
 The MCP Server can be configured to use:
 - **Built-in presets** via the `--preset` command (e.g., `--preset default` or `--preset editing`)
-- **Custom tools** defined in a YAML file via the `--tools_path` command
-- **Custom tools** via a JSON string with the `--tools` command
+- **Custom tools** defined in a YAML file via the `--config-path` command
+- **Custom tools** via a JSON string with the `--config-value` command
 - **Default tools** from the built-in `default` preset if no configuration is provided
 
 #### Built-in Presets
@@ -282,7 +282,7 @@ This yaml defines a single tool that will print out the current date/time in dif
       "command": "uvx",
       "args": [
         "mcp-this",
-        "--tools_path", "/path/to/your/custom_tools.yaml"
+        "--config-path", "/path/to/your/custom_tools.yaml"
       ]
     }
   }
@@ -320,7 +320,7 @@ You can also pass a JSON string containing tool definitions directly:
       "command": "uvx",
       "args": [
         "mcp-this",
-        "--tools",
+        "--config-value",
         "{\"tools\":{\"current-time\":{\"description\":\"Display the current date and time in various formats.\\n\\nExamples:\\n- current_time(format=\\\"iso\\\")  # ISO format (2023-05-18T14:30:45)\\n- current_time(format=\\\"readable\\\")  # Human readable (Thursday, May 18, 2023 2:30 PM)\\n- current_time(format=\\\"unix\\\")  # Unix timestamp (1684421445)\\n\\nIf no format is specified, all formats will be displayed.\",\"execution\":{\"command\":\"if [ \\\"<<format>>\\\" = \\\"iso\\\" ]; then date -u +\\\"%Y-%m-%dT%H:%M:%SZ\\\"; elif [ \\\"<<format>>\\\" = \\\"readable\\\" ]; then date \\\"+%A, %B %d, %Y %I:%M %p\\\"; elif [ \\\"<<format>>\\\" = \\\"unix\\\" ]; then date +%s; else echo \\\"ISO: $(date -u +\\\"%Y-%m-%dT%H:%M:%SZ\\\")\\\"; echo \\\"Readable: $(date \\\"+%A, %B %d, %Y %I:%M %p\\\")\\\"; echo \\\"Unix timestamp: $(date +%s)\\\"; fi\"},\"parameters\":{\"format\":{\"description\":\"Time format to display (iso, readable, unix, or leave empty for all formats)\",\"required\":false}}}}}"
       ]
     }
@@ -488,7 +488,7 @@ config = {
 # Start server with custom configuration
 server_params = StdioServerParameters(
     command='python',
-    args=['-m', 'mcp_this', '--tools', json.dumps(config)],
+    args=['-m', 'mcp_this', '--config-value', json.dumps(config)],
 )
 
 async with stdio_client(server_params) as (read, write):
@@ -510,8 +510,8 @@ You can provide configuration in several ways:
 | Method | Example |
 |--------|---------|
 | **Built-in Preset** | `--preset editing`, `--preset github`, `--preset default` |
-| **Config File Path** | `--tools_path /path/to/config.yaml` |
-| **Config Value String** | `--tools '{"tools": {...}}'` |
+| **Config File Path** | `--config-path /path/to/config.yaml` (YAML file) |
+| **Config Value String** | `--config-value '{"tools": {...}}'` (JSON string) |
 | **Environment Variable** | `MCP_THIS_CONFIG_PATH=/path/to/config.yaml` |
 | **Default Config** | If no configuration is provided, the default preset is used |
 
