@@ -38,7 +38,7 @@ mcp_test: ## Run the sample test server
 mcp_inspector_github:
 	npx @modelcontextprotocol/inspector \
 		uv run -m mcp_this \
-		--tools_path /Users/shanekercheval/repos/mcp-this/src/mcp_this/configs/github.yaml
+		--config_path /Users/shanekercheval/repos/mcp-this/src/mcp_this/configs/github.yaml
 
 ####
 # Testing

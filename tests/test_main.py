@@ -14,13 +14,13 @@ class TestMain:
     @patch('mcp_this.__main__.init_server')
     @patch('mcp_this.__main__.mcp')
     @patch('sys.argv', ['mcp-this', '--config-path', '/path/to/config.yaml'])
-    def test_main_with_tools_path(self, mock_mcp, mock_init_server):  # noqa: ANN001
+    def test_main_with_config_path(self, mock_mcp, mock_init_server):  # noqa: ANN001
         """Test main function with config-path argument."""
         # Run the main function
         main()
 
         # Check that init_server was called with the correct arguments
-        mock_init_server.assert_called_once_with(tools_path='/path/to/config.yaml', tools=None)
+        mock_init_server.assert_called_once_with(config_path='/path/to/config.yaml', tools=None)
         # Check that mcp.run was called
         mock_mcp.run.assert_called_once_with(transport='stdio')
 
@@ -33,7 +33,7 @@ class TestMain:
         main()
 
         # Check that init_server was called with the correct arguments
-        mock_init_server.assert_called_once_with(tools_path=None, tools='{"tools": {}}')
+        mock_init_server.assert_called_once_with(config_path=None, tools='{"tools": {}}')
         # Check that mcp.run was called
         mock_mcp.run.assert_called_once_with(transport='stdio')
 
@@ -47,7 +47,7 @@ class TestMain:
         main()
 
         # Check that init_server was called with the correct arguments
-        mock_init_server.assert_called_once_with(tools_path='/env/path/config.yaml', tools=None)
+        mock_init_server.assert_called_once_with(config_path='/env/path/config.yaml', tools=None)
         # Check that mcp.run was called
         mock_mcp.run.assert_called_once_with(transport='stdio')
 
@@ -65,7 +65,7 @@ class TestMain:
         main()
 
         # Check that init_server was called with the correct arguments
-        mock_init_server.assert_called_once_with(tools_path='/default/config.yaml', tools=None)
+        mock_init_server.assert_called_once_with(config_path='/default/config.yaml', tools=None)
         # Check that mcp.run was called
         mock_mcp.run.assert_called_once_with(transport='stdio')
 
@@ -79,7 +79,7 @@ class TestMain:
         main()
 
         # Check that init_server was called with the correct arguments
-        mock_init_server.assert_called_once_with(tools_path='/path/to/config.yaml', tools=None)
+        mock_init_server.assert_called_once_with(config_path='/path/to/config.yaml', tools=None)
         # Check that mcp.run was called with the custom transport
         mock_mcp.run.assert_called_once_with(transport='sse')
 

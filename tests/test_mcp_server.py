@@ -31,7 +31,7 @@ def get_config_json():
 
 @pytest.fixture(
     params=[
-        pytest.param(("--tools_path", str(SAMPLE_CONFIG_PATH)), id="tools_path"),
+        pytest.param(("--config_path", str(SAMPLE_CONFIG_PATH)), id="config_path"),
         pytest.param(("--tools", get_config_json()), id="tools"),
     ],
 )
@@ -102,7 +102,7 @@ class TestMCPServer:
         config_path = Path(__file__).parent / "fixtures" / "test_config_with_prompts.yaml"
         server_params = StdioServerParameters(
             command="python",
-            args=["-m", "mcp_this", "--tools_path", str(config_path)],
+            args=["-m", "mcp_this", "--config_path", str(config_path)],
         )
         async with stdio_client(server_params) as (read, write), ClientSession(read, write) as session:  # noqa: E501
             await session.initialize()
@@ -117,7 +117,7 @@ class TestMCPServer:
         config_path = Path(__file__).parent / "fixtures" / "test_config_with_prompts.yaml"
         server_params = StdioServerParameters(
             command="python",
-            args=["-m", "mcp_this", "--tools_path", str(config_path)],
+            args=["-m", "mcp_this", "--config_path", str(config_path)],
         )
         async with stdio_client(server_params) as (read, write), ClientSession(read, write) as session:  # noqa: E501
             await session.initialize()
@@ -136,7 +136,7 @@ class TestMCPServer:
         config_path = Path(__file__).parent / "fixtures" / "test_config_with_prompts.yaml"
         server_params = StdioServerParameters(
             command="python",
-            args=["-m", "mcp_this", "--tools_path", str(config_path)],
+            args=["-m", "mcp_this", "--config_path", str(config_path)],
         )
         async with stdio_client(server_params) as (read, write), ClientSession(
             read, write,
@@ -163,7 +163,7 @@ class TestMCPServer:
         config_path = Path(__file__).parent / "fixtures" / "test_config_with_prompts.yaml"
         server_params = StdioServerParameters(
             command="python",
-            args=["-m", "mcp_this", "--tools_path", str(config_path)],
+            args=["-m", "mcp_this", "--config_path", str(config_path)],
         )
         async with stdio_client(server_params) as (read, write), ClientSession(
             read, write,

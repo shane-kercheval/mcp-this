@@ -6,14 +6,14 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, mock_open, MagicMock
 from mcp_this.mcp_server import (
-    get_default_tools_path,
+    get_default_config_path,
     load_config,
     validate_config,
 )
 
 
 class TestGetDefaultToolsPath:
-    """Test cases for the get_default_tools_path function."""
+    """Test cases for the get_default_config_path function."""
 
     @patch("pathlib.Path.exists")
     def test_default_path_exists(self, mock_exists: MagicMock) -> None:
@@ -22,7 +22,7 @@ class TestGetDefaultToolsPath:
         mock_exists.return_value = True
 
         # Call the function
-        result = get_default_tools_path()
+        result = get_default_config_path()
 
         # Assert the result is not None and ends with the expected path
         assert result is not None
@@ -35,7 +35,7 @@ class TestGetDefaultToolsPath:
         mock_exists.return_value = False
 
         # Call the function
-        result = get_default_tools_path()
+        result = get_default_config_path()
 
         # Assert the result is None
         assert result is None
@@ -76,13 +76,13 @@ class TestLoadConfig:
     @patch("builtins.open", new_callable=mock_open,
            read_data="tools:\n  test:\n    execution:\n      command: echo test")
     @patch("pathlib.Path.is_file")
-    def test_load_config_with_tools_path(self, mock_is_file: MagicMock, mock_file: MagicMock) -> None:  # noqa: E501
-        """Test loading configuration from tools_path."""
+    def test_load_config_with_config_path(self, mock_is_file: MagicMock, mock_file: MagicMock) -> None:  # noqa: E501
+        """Test loading configuration from config_path."""
         # Setup the mock to indicate the file exists
         mock_is_file.return_value = True
 
         # Call the function
-        result = load_config(tools_path="/path/to/config.yaml")
+        result = load_config(config_path="/path/to/config.yaml")
 
         # Assert the result is correct
         assert result == {"tools": {"test": {"execution": {"command": "echo test"}}}}
@@ -97,7 +97,7 @@ class TestLoadConfig:
 
         # Assert that FileNotFoundError is raised
         with pytest.raises(FileNotFoundError, match="Configuration file not found"):
-            load_config(tools_path="/path/to/nonexistent.yaml")
+            load_config(config_path="/path/to/nonexistent.yaml")
 
     @patch("builtins.open", new_callable=mock_open, read_data="invalid: yaml: -")
     @patch("pathlib.Path.is_file")
@@ -110,7 +110,7 @@ class TestLoadConfig:
         with patch("yaml.safe_load", side_effect=yaml.YAMLError("Invalid YAML")):  # noqa: SIM117
             # Assert that ValueError is raised
             with pytest.raises(ValueError, match="Error loading configuration"):
-                load_config(tools_path="/path/to/config.yaml")
+                load_config(config_path="/path/to/config.yaml")
 
     @patch("builtins.open", new_callable=mock_open, read_data="# Empty file")
     @patch("pathlib.Path.is_file")
@@ -123,7 +123,7 @@ class TestLoadConfig:
         with patch("yaml.safe_load", return_value=None):  # noqa: SIM117
             # Assert that ValueError is raised
             with pytest.raises(ValueError, match="Configuration file is empty"):
-                load_config(tools_path="/path/to/config.yaml")
+                load_config(config_path="/path/to/config.yaml")
 
     @patch.dict(os.environ, {"MCP_THIS_CONFIG_PATH": "/env/path/config.yaml"})
     @patch("pathlib.Path.is_file")
@@ -134,7 +134,7 @@ class TestLoadConfig:
         # Setup the mock to indicate the file exists
         mock_is_file.return_value = True
 
-        # Call the function without specifying tools_path or tools
+        # Call the function without specifying config_path or tools
         result = load_config()
 
         # Assert the result is correct
@@ -156,9 +156,9 @@ class TestLoadConfig:
         if not default_config_path.exists():
             pytest.skip("Default configuration file not found")
 
-        # Temporarily patch get_default_tools_path to return our known path
-        with patch("mcp_this.mcp_server.get_default_tools_path", return_value=default_config_path):
-            # Call the function without specifying tools_path or tools
+        # Temporarily patch get_default_config_path to return our known path
+        with patch("mcp_this.mcp_server.get_default_config_path", return_value=default_config_path):  # noqa: E501
+            # Call the function without specifying config_path or tools
             result = load_config()
 
             # Load the same file directly to compare
@@ -170,7 +170,7 @@ class TestLoadConfig:
             assert "tools" in result, "Default config should contain tools section"
 
     @patch.dict(os.environ, {}, clear=True)  # Clear environment variables
-    @patch("mcp_this.mcp_server.get_default_tools_path")
+    @patch("mcp_this.mcp_server.get_default_config_path")
     def test_load_config_no_config_found(self, mock_get_default: MagicMock) -> None:
         """Test loading configuration with no config sources."""
         # Setup the mock to indicate no default config

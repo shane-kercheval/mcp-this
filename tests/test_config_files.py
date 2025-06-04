@@ -34,7 +34,7 @@ class TestConfigurationFiles:
             config_file.flush()
 
             # Load the configuration
-            result = load_config(tools_path=config_file.name)
+            result = load_config(config_path=config_file.name)
 
             # Assert that the result matches the expected configuration
             assert result == valid_config
@@ -48,7 +48,7 @@ class TestConfigurationFiles:
 
             # Assert that loading the configuration raises a ValueError
             with pytest.raises(ValueError, match="Error loading configuration"):
-                load_config(tools_path=config_file.name)
+                load_config(config_path=config_file.name)
 
 
     def test_default_config_file_content(self):
@@ -127,7 +127,7 @@ class TestConfigurationFiles:
             config_file.flush()
 
             # Load the configuration
-            result = load_config(tools_path=config_file.name)
+            result = load_config(config_path=config_file.name)
 
             # Validate the loaded configuration
             validate_config(result)

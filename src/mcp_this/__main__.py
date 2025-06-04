@@ -80,27 +80,27 @@ def main() -> None:
     args = parser.parse_args()
 
     # Set config path or value from argument or look for default config
-    tools_path = None
+    config_path = None
     tools = None
 
     # First check explicit arguments
     if args.config_path:
-        tools_path = args.config_path
+        config_path = args.config_path
     elif args.config_value:
         tools = args.config_value
     elif args.preset:
-        tools_path = get_preset_config(args.preset)
-        if not tools_path:
+        config_path = get_preset_config(args.preset)
+        if not config_path:
             print(f"Error: Preset '{args.preset}' not found.")
             sys.exit(1)
     # Then check environment variable
     elif os.environ.get("MCP_THIS_CONFIG_PATH"):
-        tools_path = os.environ.get("MCP_THIS_CONFIG_PATH")
+        config_path = os.environ.get("MCP_THIS_CONFIG_PATH")
     # Finally look for default configs
     else:
-        tools_path = find_default_config()
+        config_path = find_default_config()
 
-    if not tools_path and not tools:
+    if not config_path and not tools:
         print("Error: No configuration found. Please provide one using:")
         print("  1. --config-path argument (YAML file)")
         print("  2. --config-value argument (JSON string)")
@@ -111,7 +111,7 @@ def main() -> None:
 
     try:
         # Initialize the server with the configuration
-        init_server(tools_path=tools_path, tools=tools)
+        init_server(config_path=config_path, tools=tools)
         # Run the MCP server with the specified transport
         mcp.run(transport=args.transport)
     except Exception as e:
