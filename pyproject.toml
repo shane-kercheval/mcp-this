@@ -52,7 +52,9 @@ requires = ["hatchling>=1.17.1"]
 build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
-asyncio_mode = "auto"
+timeout = 60
+timeout_method = "signal"  # note this only works on unix; "thread" method (default) is safer but might not catch hanging subprocesses
 testpaths = ["tests"]
 pythonpath = ["src"]
+asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
