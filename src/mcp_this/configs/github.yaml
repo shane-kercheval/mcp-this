@@ -103,7 +103,7 @@ tools:
 
 prompts:
   create-pr-description:
-    description: Generate a comprehensive pull request description based on the changes made
+    description: Generate a comprehensive pull request description based on the changes made.
     template: |
       # PR Description Prompt
 
@@ -158,14 +158,59 @@ prompts:
 
       **Note:** If the following contains a URL, file path, or instructions to fetch information, use the appropriate tool to retrieve the content before writing the PR description.
 
-      **Changes to describe:**
-
       ```
-      {{changes}}
+      {{changes_or_pr_url}}
       ```
     arguments:
-      changes:
-        description: Summary of the changes made in this PR
+      changes_or_pr_url:
+        description: Either the exact changes made, or a URL to the pull request for changes.
+        required: true
+
+  create-commit-message:
+    description: Generate a concise commit message based on the changes made
+    template: |
+      # Commit Message Prompt
+
+      You are writing a commit message in markdown. Create a clear, concise message that summarizes the changes made in this commit.
+
+      ## Guidelines
+
+      **✅ Do:**
+      - Use the imperative mood (e.g., "Fix bug" instead of "Fixed bug")
+      - Keep it under 50 characters for the subject line
+      - Provide a brief description of what was changed and why
+      - Mention any related issues or tickets if applicable
+      - Include any leaked information, tokens, secrets, or sensitive data.
+
+      **❌ Don't:**
+      - Use past tense or passive voice
+      - Include unnecessary details or explanations
+      - Write overly long messages
+
+      ## Format
+
+      Use this structure:
+
+      ```
+      [Subject line summarizing the change]
+      
+      [Optional detailed description of the change]
+      ```
+
+      Keep it focused on what reviewers need to know to understand the change.
+
+      ---
+
+      # Changes
+
+      **Note:** If the following contains a URL, file path, or instructions to fetch information, use the appropriate tool to retrieve the content before writing the commit message.
+
+      ```
+      {{changes_or_path_to_repo}}
+      ```
+    arguments:
+      changes_or_path_to_repo:
+        description: Either the exact changes made, or a path to the repository for changes.
         required: true
 
   code-review:
@@ -224,11 +269,11 @@ prompts:
       Note: if the following is a url or instructions, please fetch the information with the appropriate tool.
 
       ```
-      {{code}}
+      {{diff_or pr_url_or_path_to_repo}}
       ```
     arguments:
-      code:
-        description: The code to review (can be a diff, file content, or code snippet)
+      diff_or pr_url_or_path_to_repo:
+        description: The code to review (can be a diff, PR URL, or path to a repository)
         required: true
       focus_areas:
         description: Specific areas to focus on (e.g., "security, performance, readability")

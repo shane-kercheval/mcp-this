@@ -196,18 +196,19 @@ def register_prompts(prompts_info: list[PromptInfo]) -> None:
                         if arg_value:  # Only replace if value is provided
                             template = template.replace("{{" + arg_name + "}}", str(arg_value))
 
-                    # Process {{#if variable}}content{{/if}} blocks
+                    # Process {{#if variable}}content{{else}}fallback{{/if}} blocks
                     def handle_if_block(match: re.Match) -> str:
                         var_name = match.group(1)
-                        content = match.group(2)
-                        # Include content if variable exists and is not empty
+                        if_content = match.group(2)
+                        else_content = match.group(3) if match.group(3) else ""
+                        # Include if_content if variable exists and is not empty, else else_content
                         if kwargs.get(var_name):
-                            return content
-                        return ""
+                            return if_content
+                        return else_content
 
-                    # Replace {{#if variable}}content{{/if}} blocks
+                    # Replace {{#if variable}}content{{else}}fallback{{/if}} blocks (optional else)
                     template = re.sub(
-                        r'\{\{#if (\w+)\}\}(.*?)\{\{/if\}\}',
+                        r'\{\{#if (\w+)\}\}(.*?)(?:\{\{else\}\}(.*?))?\{\{/if\}\}',
                         handle_if_block,
                         template,
                         flags=re.DOTALL,
