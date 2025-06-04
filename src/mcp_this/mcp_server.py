@@ -105,7 +105,7 @@ def load_config(config_path: str | None = None, tools: str | None = None) -> dic
             config_path = str(default_path)
         else:
             raise ValueError(
-                "No configuration provided. Please provide --config_path, --tools, "
+                "No configuration provided. Please provide --config_path, --config_value, "
                 "set MCP_THIS_CONFIG_PATH environment variable, "
                 "or include a default configuration in the package.",
             )

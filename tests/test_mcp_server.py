@@ -32,7 +32,7 @@ def get_config_json():
 @pytest.fixture(
     params=[
         pytest.param(("--config_path", str(SAMPLE_CONFIG_PATH)), id="config_path"),
-        pytest.param(("--tools", get_config_json()), id="tools"),
+        pytest.param(("--config_value", get_config_json()), id="config_value"),
     ],
 )
 def server_params(request: tuple) -> StdioServerParameters:
