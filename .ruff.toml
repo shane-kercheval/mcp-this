@@ -25,4 +25,3 @@ ignore = [
     "N802",  # invalid-function-name
     "PLR0915"  # too many statements
 ]
-"proto/generated/*" = ["ALL"]

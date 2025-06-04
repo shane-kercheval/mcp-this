@@ -159,10 +159,10 @@ prompts:
       **Note:** If the following contains a URL, file path, or instructions to fetch information, use the appropriate tool to retrieve the content before writing the PR description.
 
       ```
-      {{changes_or_pr_url}}
+      {{url_or_changes}}
       ```
     arguments:
-      changes_or_pr_url:
+      url_or_changes:
         description: Either the exact changes made, or a URL to the pull request for changes.
         required: true
 
@@ -206,10 +206,10 @@ prompts:
       **Note:** If the following contains a URL, file path, or instructions to fetch information, use the appropriate tool to retrieve the content before writing the commit message.
 
       ```
-      {{changes_or_path_to_repo}}
+      {{path_or_changes}}
       ```
     arguments:
-      changes_or_path_to_repo:
+      path_or_changes:
         description: Either the exact changes made, or a path to the repository for changes.
         required: true
 
@@ -269,10 +269,10 @@ prompts:
       Note: if the following is a url or instructions, please fetch the information with the appropriate tool.
 
       ```
-      {{diff_or pr_url_or_path_to_repo}}
+      {{url_or_changes}}
       ```
     arguments:
-      diff_or pr_url_or_path_to_repo:
+      url_or_changes:
         description: The code to review (can be a diff, PR URL, or path to a repository)
         required: true
       focus_areas:
