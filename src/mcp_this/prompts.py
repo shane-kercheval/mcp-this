@@ -5,7 +5,7 @@ Prompt definitions and parsing for MCP server.
 This module handles the parsing and validation of prompt configurations
 from YAML files, similar to how tools.py handles tool configurations.
 """
-
+import re
 from dataclasses import dataclass
 
 
@@ -74,6 +74,14 @@ def validate_prompt_argument_config(prompt_name: str, arg_name: str, arg_config:
     Raises:
         ValueError: If the argument configuration is invalid.
     """
+    # Validate argument name for Python identifier compatibility
+    if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', arg_name):
+        raise ValueError(
+            f"Argument name '{arg_name}' in prompt '{prompt_name}' contains invalid characters. "
+            "Argument names must be valid Python identifiers (letters, numbers, underscores, "
+            "cannot start with a number).",
+        )
+
     if not isinstance(arg_config, dict):
         raise ValueError(f"Argument '{arg_name}' in prompt '{prompt_name}' must be a dictionary")
 

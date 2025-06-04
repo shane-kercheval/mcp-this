@@ -242,3 +242,70 @@ class TestValidatePromptConfig:
             ValueError, match="Argument 'arg1' required field in prompt 'test' must be a boolean",
         ):
             validate_prompt_config("test", config)
+
+    def test_invalid_argument_names_rejected(self):
+        """Test validation fails when argument names contain invalid characters."""
+        # Test argument name with spaces
+        config = {
+            "description": "Test prompt",
+            "template": "Test template",
+            "arguments": {
+                "invalid arg": {  # Spaces not allowed
+                    "description": "Invalid argument with spaces",
+                    "required": True,
+                },
+            },
+        }
+        with pytest.raises(ValueError, match="contains invalid characters"):
+            validate_prompt_config("test", config)
+
+        # Test argument name starting with number
+        config = {
+            "description": "Test prompt",
+            "template": "Test template",
+            "arguments": {
+                "123invalid": {  # Cannot start with number
+                    "description": "Invalid argument starting with number",
+                    "required": False,
+                },
+            },
+        }
+        with pytest.raises(ValueError, match="contains invalid characters"):
+            validate_prompt_config("test", config)
+
+        # Test argument name with dashes
+        config = {
+            "description": "Test prompt",
+            "template": "Test template",
+            "arguments": {
+                "invalid-dash": {  # Dashes not allowed
+                    "description": "Invalid argument with dash",
+                    "required": False,
+                },
+            },
+        }
+        with pytest.raises(ValueError, match="contains invalid characters"):
+            validate_prompt_config("test", config)
+
+    def test_valid_argument_names_accepted(self):
+        """Test validation passes for valid argument names."""
+        config = {
+            "description": "Test prompt",
+            "template": "Test template",
+            "arguments": {
+                "valid_arg": {
+                    "description": "Valid argument",
+                    "required": True,
+                },
+                "_another_valid_arg": {
+                    "description": "Another valid argument starting with underscore",
+                    "required": False,
+                },
+                "arg123": {
+                    "description": "Valid argument with numbers",
+                    "required": False,
+                },
+            },
+        }
+        # Should not raise any exception
+        validate_prompt_config("test", config)

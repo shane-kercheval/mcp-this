@@ -955,3 +955,95 @@ class TestGetLocalChangesInfo:
                 assert "New text file content" in result_text
                 assert ("Binary file" in result_text or "skipped" in result_text)
                 assert ("Large file" in result_text or ">100KB" in result_text)
+
+
+@pytest.mark.asyncio
+class TestGitHubPrompts:
+    """Test the prompts from the GitHub configuration."""
+
+    async def test_prompts_registration(self, server_params: StdioServerParameters):
+        """Test that all GitHub prompts are properly registered."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+            prompts = await session.list_prompts()
+
+            # Verify all expected prompts exist
+            prompt_names = [p.name for p in prompts.prompts]
+            expected_prompts = ["create-pr-description", "create-commit-message", "code-review"]
+
+            for expected_prompt in expected_prompts:
+                assert expected_prompt in prompt_names, \
+                    f"Prompt '{expected_prompt}' not found in {prompt_names}"
+
+            # Verify we have exactly 3 prompts
+            assert len(prompts.prompts) == 3, \
+                f"Expected 3 prompts, got {len(prompts.prompts)}: {prompt_names}"
+
+    async def test_create_pr_description_prompt(self, server_params: StdioServerParameters):
+        """Test the create-pr-description prompt structure."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+            prompts = await session.list_prompts()
+
+            # Find the create-pr-description prompt
+            pr_prompt = next(p for p in prompts.prompts if p.name == "create-pr-description")
+
+            # Check description
+            assert "pull request description" in pr_prompt.description.lower()
+
+            # Check arguments
+            assert len(pr_prompt.arguments) == 1
+            arg = pr_prompt.arguments[0]
+            assert arg.name == "url_or_changes"
+            assert arg.required is True
+
+    async def test_create_commit_message_prompt(self, server_params: StdioServerParameters):
+        """Test the create-commit-message prompt structure."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+            prompts = await session.list_prompts()
+
+            # Find the create-commit-message prompt
+            commit_prompt = next(p for p in prompts.prompts if p.name == "create-commit-message")
+
+            # Check description
+            assert "commit message" in commit_prompt.description.lower()
+
+            # Check arguments
+            assert len(commit_prompt.arguments) == 1
+            arg = commit_prompt.arguments[0]
+            assert arg.name == "path_or_changes"
+            assert arg.required is True
+
+    async def test_code_review_prompt(self, server_params: StdioServerParameters):
+        """Test the code-review prompt structure."""
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+            prompts = await session.list_prompts()
+
+            # Find the code-review prompt
+            review_prompt = next(p for p in prompts.prompts if p.name == "code-review")
+
+            # Check description
+            assert "code review" in review_prompt.description.lower()
+
+            # Check arguments
+            assert len(review_prompt.arguments) == 2
+
+            # Check required argument
+            required_arg = next(arg for arg in review_prompt.arguments if arg.required)
+            assert required_arg.name == "url_or_changes"
+            assert required_arg.required is True
+
+            # Check optional argument
+            optional_arg = next(arg for arg in review_prompt.arguments if not arg.required)
+            assert optional_arg.name == "focus_areas"
+            assert optional_arg.required is False

@@ -130,6 +130,61 @@ class TestMCPServer:
             assert "This is a test prompt for testing." in content
             assert "Additional details: with details" in content
 
+    @pytest.mark.asyncio
+    async def test_get_prompt_with_optional_args(self):
+        """Test getting a prompt template with both required and optional arguments."""
+        config_path = Path(__file__).parent / "fixtures" / "test_config_with_prompts.yaml"
+        server_params = StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_this", "--tools_path", str(config_path)],
+        )
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Test prompt with both required and optional arguments
+            result = await session.get_prompt(
+                "test-prompt",
+                {"subject": "testing", "details": "with details"},
+            )
+
+            assert result.messages
+            message = result.messages[0]
+            content = message.content.text
+
+            # Check that both arguments were rendered
+            assert "testing" in content
+            assert "with details" in content
+
+    @pytest.mark.asyncio
+    async def test_get_prompt_without_optional_args(self):
+        """Test getting a prompt template with only required arguments."""
+        config_path = Path(__file__).parent / "fixtures" / "test_config_with_prompts.yaml"
+        server_params = StdioServerParameters(
+            command="python",
+            args=["-m", "mcp_this", "--tools_path", str(config_path)],
+        )
+        async with stdio_client(server_params) as (read, write), ClientSession(
+            read, write,
+        ) as session:
+            await session.initialize()
+
+            # Test prompt with only required argument
+            result = await session.get_prompt(
+                "test-prompt",
+                {"subject": "testing"},
+            )
+
+            assert result.messages
+            message = result.messages[0]
+            content = message.content.text
+
+            # Check that required argument was rendered
+            assert "testing" in content
+            # Optional content should not appear when not provided
+            assert "Additional details:" not in content or "with details" not in content
+
 
 class TestBuildCommand:
     """Test cases for the build_command function."""
@@ -365,7 +420,6 @@ class TestExecuteCommand:
         assert "Special chars: & | ; < > ( ) $ \\ \"" in result
 
 
-
 class TestParseTools:
     """Test cases for the parse_tools function."""
 
@@ -533,9 +587,6 @@ class TestParseTools:
         tool = result[0]
         assert tool.param_string == "name"  # No default for required params
 
-
-
-
     def test_multiple_different_tools(self):
         """Test parsing configuration with multiple different tools."""
         config = {
@@ -666,7 +717,6 @@ class TestParseTools:
         assert "- name [OPTIONAL] (string): Your name" in desc
         assert "- greeting [REQUIRED] (string): Greeting to use" in desc
         assert "EXAMPLE USAGE:" not in desc
-
 
     def test_get_full_description_with_complex_command(self):
         """Test get_full_description with a complex command template."""

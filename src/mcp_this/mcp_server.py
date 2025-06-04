@@ -259,7 +259,7 @@ def register_prompts(prompts_info: list[PromptInfo]) -> None:
 
             # Create and register the prompt handler
             handler = create_prompt_handler(prompt_info)
-            mcp.prompt(name=prompt_info.name)(handler)
+            mcp.prompt(name=prompt_info.name, description=prompt_info.description)(handler)
         except Exception:
             import traceback
             traceback.print_exc()
