@@ -7,6 +7,7 @@ Each tool maps to a command-line command that can be executed by the server.
 import os
 import yaml
 import json
+import re
 from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 import sys
@@ -16,6 +17,42 @@ from mcp_this.prompts import PromptInfo, parse_prompts
 
 
 mcp = FastMCP("Dynamic CLI Tools")
+
+
+def render_template(template: str, kwargs: dict) -> str:
+    """
+    Render a template with variable substitution and conditional blocks.
+
+    Supports:
+    - {{variable}} - Simple variable substitution
+    - {{#if variable}}content{{/if}} - Conditional blocks
+    - {{#if variable}}content{{else}}fallback{{/if}} - Conditional blocks with else
+    """
+    # Simple template rendering - replace {{variable}} with values
+    for arg_name, arg_value in kwargs.items():
+        if arg_value:  # Only replace if value is provided
+            template = template.replace("{{" + arg_name + "}}", str(arg_value))
+
+    # Process {{#if variable}}content{{else}}fallback{{/if}} blocks
+    def handle_if_block(match: re.Match) -> str:
+        var_name = match.group(1)
+        if_content = match.group(2)
+        else_content = match.group(3) if match.group(3) else ""
+        # Include if_content if variable exists and is not empty, else else_content
+        if kwargs.get(var_name):
+            return if_content
+        return else_content
+
+    # Replace {{#if variable}}content{{else}}fallback{{/if}} blocks (optional else)
+    template = re.sub(
+        r'\{\{#if (\w+)\}\}(.*?)(?:\{\{else\}\}(.*?))?\{\{/if\}\}',
+        handle_if_block,
+        template,
+        flags=re.DOTALL,
+    )
+    # Clean up any remaining unfilled variables
+    template = re.sub(r'\{\{\w+\}\}', '', template)
+    return template.strip()
 
 
 def get_default_tools_path() -> Path | None:
@@ -187,37 +224,6 @@ def register_prompts(prompts_info: list[PromptInfo]) -> None:
         try:
             # Create prompt handler function dynamically
             def create_prompt_handler(prompt_info: PromptInfo) -> Callable:
-                import re
-
-                # Create a simple template renderer
-                def render_template(template: str, kwargs: dict) -> str:
-                    # Simple template rendering - replace {{variable}} with values
-                    for arg_name, arg_value in kwargs.items():
-                        if arg_value:  # Only replace if value is provided
-                            template = template.replace("{{" + arg_name + "}}", str(arg_value))
-
-                    # Process {{#if variable}}content{{else}}fallback{{/if}} blocks
-                    def handle_if_block(match: re.Match) -> str:
-                        var_name = match.group(1)
-                        if_content = match.group(2)
-                        else_content = match.group(3) if match.group(3) else ""
-                        # Include if_content if variable exists and is not empty, else else_content
-                        if kwargs.get(var_name):
-                            return if_content
-                        return else_content
-
-                    # Replace {{#if variable}}content{{else}}fallback{{/if}} blocks (optional else)
-                    template = re.sub(
-                        r'\{\{#if (\w+)\}\}(.*?)(?:\{\{else\}\}(.*?))?\{\{/if\}\}',
-                        handle_if_block,
-                        template,
-                        flags=re.DOTALL,
-                    )
-
-                    # Clean up any remaining unfilled variables
-                    template = re.sub(r'\{\{\w+\}\}', '', template)
-
-                    return template.strip()
 
                 # Build function signature dynamically based on prompt arguments
                 required_args = []

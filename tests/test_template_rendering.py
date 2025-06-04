@@ -1,87 +1,56 @@
 """Unit tests for template rendering functionality in prompts."""
 from mcp_this.prompts import parse_prompts
+from mcp_this.mcp_server import render_template
 
 
 class TestTemplateRendering:
     """Test cases for template rendering functionality."""
 
-    def render_template(self, template: str, kwargs: dict) -> str:
-        """Helper function that replicates the template rendering logic from mcp_server.py."""
-        import re
-
-        # Simple template rendering - replace {{variable}} with values
-        for arg_name, arg_value in kwargs.items():
-            if arg_value:  # Only replace if value is provided
-                template = template.replace("{{" + arg_name + "}}", str(arg_value))
-
-        # Process {{#if variable}}content{{else}}fallback{{/if}} blocks
-        def handle_if_block(match: re.Match) -> str:
-            var_name = match.group(1)
-            if_content = match.group(2)
-            else_content = match.group(3) if match.group(3) else ""
-            # Include if_content if variable exists and is not empty, else else_content
-            if kwargs.get(var_name):
-                return if_content
-            return else_content
-
-        # Replace {{#if variable}}content{{else}}fallback{{/if}} blocks (optional else)
-        template = re.sub(
-            r'\{\{#if (\w+)\}\}(.*?)(?:\{\{else\}\}(.*?))?\{\{/if\}\}',
-            handle_if_block,
-            template,
-            flags=re.DOTALL,
-        )
-
-        # Clean up any remaining unfilled variables
-        template = re.sub(r'\{\{\w+\}\}', '', template)
-
-        return template.strip()
-
     def test_basic_variable_substitution(self):
         """Test basic variable substitution with {{variable}}."""
-        result = self.render_template("Hello {{name}}!", {"name": "World"})
+        result = render_template("Hello {{name}}!", {"name": "World"})
         assert result == "Hello World!"
 
     def test_multiple_variable_substitution(self):
         """Test substitution of multiple variables."""
         template = "Hello {{name}}, welcome to {{place}}!"
-        result = self.render_template(template, {"name": "Alice", "place": "Python"})
+        result = render_template(template, {"name": "Alice", "place": "Python"})
         assert result == "Hello Alice, welcome to Python!"
 
     def test_empty_variable_not_substituted(self):
         """Test that empty variables are not substituted."""
         template = "Hello {{name}}{{suffix}}"
-        result = self.render_template(template, {"name": "World", "suffix": ""})
+        result = render_template(template, {"name": "World", "suffix": ""})
         assert result == "Hello World"
 
     def test_none_variable_not_substituted(self):
         """Test that None variables are not substituted."""
         template = "Hello {{name}}{{suffix}}"
-        result = self.render_template(template, {"name": "World", "suffix": None})
+        result = render_template(template, {"name": "World", "suffix": None})
         assert result == "Hello World"
 
     def test_missing_variable_removed(self):
         """Test that missing variables are cleaned up."""
         template = "Hello {{name}} {{missing_var}}"
-        result = self.render_template(template, {"name": "World"})
+        result = render_template(template, {"name": "World"})
         assert result == "Hello World"
 
     def test_if_block_with_truthy_variable(self):
         """Test {{#if}} block when variable is truthy."""
         template = "Hello{{#if name}} {{name}}{{/if}}!"
-        result = self.render_template(template, {"name": "World"})
+        result = render_template(template, {"name": "World"})
         assert result == "Hello World!"
 
     def test_if_block_with_falsy_variable(self):
         """Test {{#if}} block when variable is falsy."""
         template = "Hello{{#if name}} {{name}}{{/if}}!"
-        result = self.render_template(template, {"name": ""})
+        result = render_template(template, {"name": ""})
         assert result == "Hello!"
 
     def test_if_block_with_missing_variable(self):
         """Test {{#if}} block when variable is missing."""
         template = "Hello{{#if name}} {{name}}{{/if}}!"
-        result = self.render_template(template, {})
+        result = render_template(template, {})
         assert result == "Hello!"
 
     def test_if_block_multiline(self):
@@ -90,7 +59,7 @@ class TestTemplateRendering:
 Additional details:
 {{details}}{{/if}}
 Done."""
-        result = self.render_template(template, {"details": "Some info"})
+        result = render_template(template, {"details": "Some info"})
         expected = """Hello
 Additional details:
 Some info
@@ -103,7 +72,7 @@ Done."""
 Additional details:
 {{details}}{{/if}}
 Done."""
-        result = self.render_template(template, {})
+        result = render_template(template, {})
         expected = """Hello
 Done."""
         assert result == expected
@@ -111,19 +80,19 @@ Done."""
     def test_if_else_block_true_condition(self):
         """Test {{#if}}...{{else}}...{{/if}} when condition is true."""
         template = "{{#if name}}Hello {{name}}{{else}}Hello stranger{{/if}}!"
-        result = self.render_template(template, {"name": "Alice"})
+        result = render_template(template, {"name": "Alice"})
         assert result == "Hello Alice!"
 
     def test_if_else_block_false_condition(self):
         """Test {{#if}}...{{else}}...{{/if}} when condition is false."""
         template = "{{#if name}}Hello {{name}}{{else}}Hello stranger{{/if}}!"
-        result = self.render_template(template, {"name": ""})
+        result = render_template(template, {"name": ""})
         assert result == "Hello stranger!"
 
     def test_if_else_block_missing_variable(self):
         """Test {{#if}}...{{else}}...{{/if}} when variable is missing."""
         template = "{{#if name}}Hello {{name}}{{else}}Hello stranger{{/if}}!"
-        result = self.render_template(template, {})
+        result = render_template(template, {})
         assert result == "Hello stranger!"
 
     def test_if_else_block_multiline(self):
@@ -138,7 +107,7 @@ Access denied.
 {{/if}}
 Thank you."""
         # Test with user
-        result = self.render_template(template, {"user": "admin"})
+        result = render_template(template, {"user": "admin"})
         expected = """Welcome!
 
 You are logged in as admin.
@@ -148,7 +117,7 @@ Thank you."""
         assert result == expected
 
         # Test without user
-        result = self.render_template(template, {})
+        result = render_template(template, {})
         expected = """Welcome!
 
 Please log in to continue.
@@ -161,11 +130,11 @@ Thank you."""
         """Test single line {{#if}} statement."""
         template = "File: {{filename}}{{#if size}} ({{size}} bytes){{/if}}"
         # With size
-        result = self.render_template(template, {"filename": "test.txt", "size": "1024"})
+        result = render_template(template, {"filename": "test.txt", "size": "1024"})
         assert result == "File: test.txt (1024 bytes)"
 
         # Without size
-        result = self.render_template(template, {"filename": "test.txt"})
+        result = render_template(template, {"filename": "test.txt"})
         assert result == "File: test.txt"
 
     def test_single_line_if_else_statement(self):
@@ -173,11 +142,11 @@ Thank you."""
         template = "Status: {{#if active}}Online{{else}}Offline{{/if}}"
 
         # Active
-        result = self.render_template(template, {"active": "true"})
+        result = render_template(template, {"active": "true"})
         assert result == "Status: Online"
 
         # Inactive
-        result = self.render_template(template, {"active": ""})
+        result = render_template(template, {"active": ""})
         assert result == "Status: Offline"
 
     def test_nested_variable_in_if_block(self):
@@ -185,11 +154,11 @@ Thank you."""
         template = "{{#if greeting}}{{greeting}} {{name}}{{else}}Hello {{name}}{{/if}}!"
 
         # With custom greeting
-        result = self.render_template(template, {"greeting": "Hi", "name": "Bob"})
+        result = render_template(template, {"greeting": "Hi", "name": "Bob"})
         assert result == "Hi Bob!"
 
         # Without custom greeting
-        result = self.render_template(template, {"name": "Bob"})
+        result = render_template(template, {"name": "Bob"})
         assert result == "Hello Bob!"
 
     def test_multiple_if_blocks(self):
@@ -198,7 +167,7 @@ Thank you."""
 {{#if email}}Email: {{email}}{{/if}}
 {{#if phone}}Phone: {{phone}}{{else}}No phone provided{{/if}}
 {{#if address}}Address: {{address}}{{/if}}"""
-        result = self.render_template(template, {
+        result = render_template(template, {
             "name": "John",
             "email": "john@example.com",
             "phone": "",
@@ -228,7 +197,7 @@ No additional details provided.
 Status: {{#if completed}}✅ Complete{{else}}⏳ Pending{{/if}}"""
 
         # Test with all fields
-        result = self.render_template(template, {
+        result = render_template(template, {
             "prompt_name": "custom-task",
             "subject": "Fix bug",
             "priority": "High",
@@ -251,7 +220,7 @@ Status: ⏳ Pending"""
         assert result == expected
 
         # Test with minimal fields
-        result = self.render_template(template, {
+        result = render_template(template, {
             "subject": "Review code",
             "completed": "true",
         })
@@ -271,7 +240,7 @@ Status: ✅ Complete"""
     def test_numeric_variables(self):
         """Test that numeric variables are properly converted to strings."""
         template = "Count: {{count}}{{#if total}} of {{total}}{{/if}}"
-        result = self.render_template(template, {"count": 5, "total": 10})
+        result = render_template(template, {"count": 5, "total": 10})
         assert result == "Count: 5 of 10"
 
     def test_boolean_variables_as_strings(self):
@@ -279,25 +248,25 @@ Status: ✅ Complete"""
         template = "{{#if enabled}}Feature enabled{{else}}Feature disabled{{/if}}"
 
         # String representations of booleans
-        result = self.render_template(template, {"enabled": "true"})
+        result = render_template(template, {"enabled": "true"})
         assert result == "Feature enabled"
 
-        result = self.render_template(template, {"enabled": "false"})
+        result = render_template(template, {"enabled": "false"})
         assert result == "Feature enabled"  # Non-empty string is truthy
 
-        result = self.render_template(template, {"enabled": ""})
+        result = render_template(template, {"enabled": ""})
         assert result == "Feature disabled"  # Empty string is falsy
 
     def test_whitespace_handling(self):
         """Test that whitespace in templates is preserved correctly."""
         template = "  {{#if indent}}    Indented content{{/if}}  "
-        result = self.render_template(template, {"indent": "yes"})
+        result = render_template(template, {"indent": "yes"})
         assert result == "Indented content"  # strip() removes leading/trailing whitespace
 
     def test_special_characters_in_variables(self):
         """Test that special characters in variables are preserved."""
         template = "Message: {{message}}"
-        result = self.render_template(template, {"message": "Hello & welcome! <test>"})
+        result = render_template(template, {"message": "Hello & welcome! <test>"})
         assert result == "Message: Hello & welcome! <test>"
 
 

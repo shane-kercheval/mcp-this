@@ -566,7 +566,7 @@ cli = [
 
 [[package]]
 name = "mcp-this"
-version = "0.0.16"
+version = "0.0.18"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
