@@ -13,9 +13,9 @@ class TestMain:
 
     @patch('mcp_this.__main__.init_server')
     @patch('mcp_this.__main__.mcp')
-    @patch('sys.argv', ['mcp-this', '--tools_path', '/path/to/config.yaml'])
+    @patch('sys.argv', ['mcp-this', '--config-path', '/path/to/config.yaml'])
     def test_main_with_tools_path(self, mock_mcp, mock_init_server):  # noqa: ANN001
-        """Test main function with tools_path argument."""
+        """Test main function with config-path argument."""
         # Run the main function
         main()
 
@@ -26,9 +26,9 @@ class TestMain:
 
     @patch('mcp_this.__main__.init_server')
     @patch('mcp_this.__main__.mcp')
-    @patch('sys.argv', ['mcp-this', '--tools', '{"tools": {}}'])
+    @patch('sys.argv', ['mcp-this', '--config-value', '{"tools": {}}'])
     def test_main_with_tools_json(self, mock_mcp, mock_init_server):  # noqa: ANN001
-        """Test main function with tools JSON argument."""
+        """Test main function with config-value JSON argument."""
         # Run the main function
         main()
 
@@ -72,7 +72,7 @@ class TestMain:
 
     @patch('mcp_this.__main__.init_server')
     @patch('mcp_this.__main__.mcp')
-    @patch('sys.argv', ['mcp-this', '--transport', 'sse', '--tools_path', '/path/to/config.yaml'])
+    @patch('sys.argv', ['mcp-this', '--transport', 'sse', '--config-path', '/path/to/config.yaml'])
     def test_main_custom_transport(self, mock_mcp, mock_init_server):  # noqa: ANN001
         """Test main function with custom transport."""
         # Run the main function
@@ -84,7 +84,7 @@ class TestMain:
         mock_mcp.run.assert_called_once_with(transport='sse')
 
     @patch('mcp_this.__main__.init_server')
-    @patch('sys.argv', ['mcp-this', '--tools_path', '/path/to/config.yaml'])
+    @patch('sys.argv', ['mcp-this', '--config-path', '/path/to/config.yaml'])
     @patch('sys.exit')
     def test_main_init_server_error(self, mock_exit, mock_init_server):  # noqa: ANN001
         """Test main function handling init_server errors."""

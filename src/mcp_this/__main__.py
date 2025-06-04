@@ -54,14 +54,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Dynamic CLI Tools MCP Server")
     config_group = parser.add_mutually_exclusive_group()
     config_group.add_argument(
-        "--tools_path",
-        "--tools-path",
+        "--config-path",
+        "--config_path",
         type=str,
         help="Path to YAML configuration file",
     )
     config_group.add_argument(
-        "--tools",
-        "--tools",
+        "--config-value",
+        "--config_value",
         type=str,
         help="JSON-structured configuration string",
     )
@@ -84,10 +84,10 @@ def main() -> None:
     tools = None
 
     # First check explicit arguments
-    if args.tools_path:
-        tools_path = args.tools_path
-    elif args.tools:
-        tools = args.tools
+    if args.config_path:
+        tools_path = args.config_path
+    elif args.config_value:
+        tools = args.config_value
     elif args.preset:
         tools_path = get_preset_config(args.preset)
         if not tools_path:
@@ -102,8 +102,8 @@ def main() -> None:
 
     if not tools_path and not tools:
         print("Error: No configuration found. Please provide one using:")
-        print("  1. --tools_path argument")
-        print("  2. --tools argument")
+        print("  1. --config-path argument (YAML file)")
+        print("  2. --config-value argument (JSON string)")
         print("  3. --preset argument (e.g., 'editing')")
         print("  4. MCP_THIS_CONFIG_PATH environment variable")
         print("  5. Place default.yaml in the package configs directory")
