@@ -1,10 +1,10 @@
 # `mcp-this`
 
-> An MCP Server that dynamically exposes CLI/bash commands as tools and AI prompt templates through YAML configuration files.
+> An MCP Server that dynamically exposes CLI/bash commands as tools and prompt templates through YAML configuration files.
 
-`mcp-this` lets you turn any command-line tool into an MCP tool and create structured AI prompt templates that Claude can use. Instead of writing code, you simply define commands, prompts, and their parameters in YAML files, and the server makes them available to MCP clients like Claude Desktop.
+`mcp-this` lets you turn any command-line tool into an MCP tool and create structured prompt templates that any MCP Client (e.g. Claude Desktop) can use. Instead of writing code, you simply define commands, prompts, and their parameters in YAML files, and the MCP Server makes them available to MCP Clients like Claude Desktop.
 
-**Core Value:** Transform CLI commands into MCP tools and create reusable AI prompt templates using simple YAML configuration.
+**Core Value:** Transform CLI commands into MCP tools and create reusable prompt templates using simple YAML configuration.
 
 ---
 
