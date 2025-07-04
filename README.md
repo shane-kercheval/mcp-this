@@ -1,16 +1,16 @@
 # `mcp-this`
 
-> An MCP Server that dynamically exposes CLI/bash commands as tools through YAML configuration files.
+> An MCP Server that dynamically exposes CLI/bash commands as tools and AI prompt templates through YAML configuration files.
 
-`mcp-this` lets you turn any command-line tool into an MCP tool that Claude can use. Instead of writing code, you simply define commands and their parameters in YAML files, and the server makes them available to MCP clients like Claude Desktop.
+`mcp-this` lets you turn any command-line tool into an MCP tool and create structured AI prompt templates that Claude can use. Instead of writing code, you simply define commands, prompts, and their parameters in YAML files, and the server makes them available to MCP clients like Claude Desktop.
 
-**Core Value:** Transform any CLI command into an MCP tool using simple YAML configuration.
+**Core Value:** Transform CLI commands into MCP tools and create reusable AI prompt templates using simple YAML configuration.
 
 ---
 
 ## How It Works
 
-Define tools in YAML:
+Define **tools** (CLI commands) and **prompts** (AI templates) in YAML:
 
 ```yaml
 tools:
@@ -41,6 +41,31 @@ tools:
     execution:
       command: uname -a && echo "CPU: $(nproc) cores"
     parameters: {}
+
+prompts:
+  code-reviewer:
+    description: Perform a thorough code review with best practices focus
+    template: |
+      Please review the following code with a focus on:
+      - Code quality and best practices
+      - Security vulnerabilities
+      - Performance considerations
+      {{#if focus_area}}- Special attention to: {{focus_area}}{{/if}}
+      
+      Code to review:
+      {{code}}
+      
+      {{#if context}}Additional context: {{context}}{{/if}}
+    arguments:
+      code:
+        description: Code to review
+        required: true
+      focus_area:
+        description: Specific area to focus on (e.g., security, performance)
+        required: false
+      context:
+        description: Additional context about the code
+        required: false
 ```
 
 Use in Claude Desktop:
@@ -56,7 +81,9 @@ Use in Claude Desktop:
 }
 ```
 
-That's it! Claude can now use your custom CLI tools.
+That's it! Claude can now:
+- **Execute your custom CLI tools** (get-current-time, system-info)
+- **Use your structured prompt templates** (code-reviewer with guided arguments)
 
 ---
 
@@ -96,6 +123,72 @@ tools:
         required: true
 ```
 
+### 2.1. Add AI Prompt Templates (Optional)
+
+Enhance your `my-tools.yaml` with structured prompt templates:
+
+```yaml
+tools:
+  # ... your tools above ...
+
+prompts:
+  summarize-webpage:
+    description: Generate a structured summary of webpage content
+    template: |
+      Please analyze the following webpage content and provide:
+      
+      1. **Main Topic**: What is this page about?
+      2. **Key Points**: {{num_points}} most important points
+      3. **Target Audience**: Who is this content for?
+      {{#if focus}}4. **{{focus}} Analysis**: Specific insights about {{focus}}{{/if}}
+      
+      Content:
+      {{content}}
+    arguments:
+      content:
+        description: Webpage content to summarize
+        required: true
+      num_points:
+        description: Number of key points to extract (default 5)
+        required: false
+      focus:
+        description: Specific aspect to focus on (e.g., technical, business, educational)
+        required: false
+
+  file-analysis:
+    description: Analyze files for specific purposes
+    template: |
+      Analyze the following files for {{analysis_type}}:
+      
+      {{#if criteria}}Focus on: {{criteria}}{{/if}}
+      
+      {{files}}
+      
+      Please provide:
+      - Summary of findings
+      - Recommendations
+      - {{#if format}}Output in {{format}} format{{/if}}
+    arguments:
+      files:
+        description: File contents or paths to analyze
+        required: true
+      analysis_type:
+        description: Type of analysis (security, performance, quality, etc.)
+        required: true
+      criteria:
+        description: Specific criteria or standards to check against
+        required: false
+      format:
+        description: Output format (markdown, JSON, report, etc.)
+        required: false
+```
+
+**Using Prompts in Claude Desktop:**
+1. Click the `+` icon in the message input
+2. Select "Add from mcp-this-custom"
+3. Choose your prompt (e.g., "summarize-webpage")
+4. Fill in the arguments - Claude will guide you through the required and optional fields
+
 ### 3. Configure Claude Desktop
 
 Add to your `claude_desktop_config.json`:
@@ -113,7 +206,9 @@ Add to your `claude_desktop_config.json`:
 
 ### 4. Restart Claude Desktop
 
-Your tools are now available! Claude can fetch web content and find large files using your custom commands.
+Your tools and prompts are now available! Claude can:
+- **Fetch web content and find large files** using your custom CLI tools
+- **Use structured prompt templates** for guided analysis and summarization
 
 ---
 
@@ -174,13 +269,13 @@ prompts:
 | **Environment Variable** | `MCP_THIS_CONFIG_PATH` | `export MCP_THIS_CONFIG_PATH=./tools.yaml` |
 | **Built-in Preset** | `--preset <n>` | `--preset default` |
 
-## Pre-Built Tool Collections (Presets)
+## Pre-Built Tool & Prompt Collections (Presets)
 
-For convenience, `mcp-this` includes ready-to-use tool collections:
+For convenience, `mcp-this` includes ready-to-use collections of tools and prompts:
 
 - **`default`** - Safe, read-only tools (file exploration, web scraping)
 - **`editing`** - File manipulation tools (create, edit, delete)  
-- **`github`** - GitHub integration tools (PR analysis, repository operations)
+- **`github`** - GitHub integration tools (PR analysis, repository operations) + specialized prompts (code-review, create-pr-description)
 
 **Quick usage:**
 ```json
@@ -239,6 +334,93 @@ tools:
         description: Number of log lines to show (default 100)
         required: false
         default: "100"
+```
+
+### AI-Powered Workflow Prompts
+
+```yaml
+prompts:
+  refactor-code:
+    description: Guide code refactoring with specific goals and constraints
+    template: |
+      Please refactor the following code with these objectives:
+      {{#if goals}}
+      **Goals:**
+      {{goals}}
+      {{/if}}
+      
+      **Constraints:**
+      - Maintain existing functionality
+      - {{#if language}}Follow {{language}} best practices{{/if}}
+      - {{#if performance}}Optimize for {{performance}}{{/if}}
+      {{#if additional_constraints}}
+      - {{additional_constraints}}
+      {{/if}}
+      
+      **Code to refactor:**
+      ```
+      {{code}}
+      ```
+      
+      Please provide:
+      1. Refactored code with explanations
+      2. Summary of changes made
+      3. Potential risks or considerations
+    arguments:
+      code:
+        description: Code to refactor
+        required: true
+      goals:
+        description: Specific refactoring goals (e.g., improve readability, reduce complexity)
+        required: false
+      language:
+        description: Programming language for best practices
+        required: false
+      performance:
+        description: Performance optimization target (speed, memory, etc.)
+        required: false
+      additional_constraints:
+        description: Any additional constraints or requirements
+        required: false
+
+  technical-documentation:
+    description: Generate comprehensive technical documentation
+    template: |
+      Create {{doc_type}} documentation for:
+      
+      {{content}}
+      
+      **Requirements:**
+      - Target audience: {{audience}}
+      {{#if style}}- Documentation style: {{style}}{{/if}}
+      {{#if sections}}- Include sections: {{sections}}{{/if}}
+      - {{#if detail_level}}Detail level: {{detail_level}}{{/if}}
+      
+      {{#if examples}}**Include examples:** {{examples}}{{/if}}
+      
+      Please structure the documentation with clear headings, examples, and actionable information.
+    arguments:
+      content:
+        description: Code, API, or system to document
+        required: true
+      doc_type:
+        description: Type of documentation (API, user guide, technical spec, etc.)
+        required: true
+      audience:
+        description: Target audience (developers, end-users, administrators, etc.)
+        required: true
+      style:
+        description: Documentation style (formal, conversational, tutorial, reference)
+        required: false
+      sections:
+        description: Specific sections to include
+        required: false
+      detail_level:
+        description: Level of detail (high-level, detailed, comprehensive)
+        required: false
+      examples:
+        description: Types of examples to include
+        required: false
 ```
 
 ### System Administration Tools
