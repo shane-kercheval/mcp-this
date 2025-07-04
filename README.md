@@ -332,7 +332,7 @@ You can also pass a JSON string containing tool definitions directly:
 
 ## Configuration Format
 
-Configuration can be provided as either a YAML file or a JSON string. The format supports defining tools directly.
+Configuration can be provided as either a YAML file or a JSON string. The format supports defining both tools and prompts.
 
 ### Basic Structure
 
@@ -363,6 +363,66 @@ Each tool requires the following configuration:
 | **parameters** | Definitions for each parameter the tool accepts |
 
 Parameters are specified in the form `<<parameter_name>>` in the command template and will be replaced with the actual parameter values when executed.
+
+### Prompt Configuration
+
+In addition to tools, you can define prompts in your configuration. Prompts are templates that can be used to generate structured requests or instructions for AI models.
+
+```yaml
+tools:
+  # ... tool definitions ...
+
+prompts:
+  prompt-name:
+    description: "Description of what the prompt does"
+    template: |
+      Your prompt template here with {{argument_name}} placeholders.
+      {{#if optional_argument}}Conditional content for {{optional_argument}}.{{/if}}
+    arguments:
+      argument_name:
+        description: "Description of the argument"
+        required: true
+      optional_argument:
+        description: "Optional argument description"
+        required: false
+```
+
+Each prompt requires the following configuration:
+
+| Component | Description |
+|-----------|-------------|
+| **description** | Human-readable description of the prompt's purpose |
+| **template** | Template string with Handlebars-style placeholders (`{{argument}}`) |
+| **arguments** | Definitions for each argument the prompt accepts |
+
+Prompt templates use Handlebars-style syntax:
+- `{{argument_name}}` for simple variable substitution
+- `{{#if argument_name}}...{{/if}}` for conditional content
+- Arguments are defined similarly to tool parameters but use `{{}}` instead of `<<>>`
+
+**Example from `examples/prompts_example.yaml`:**
+
+```yaml
+prompts:
+  simple-greeting:
+    description: Generate a personalized greeting message
+    template: |
+      Generate a warm, friendly greeting for {{name}}.
+      {{#if occasion}}The greeting is for {{occasion}}.{{/if}}
+      {{#if tone}}Use a {{tone}} tone.{{/if}}
+      
+      Make it personal and engaging.
+    arguments:
+      name:
+        description: Name of the person to greet
+        required: true
+      occasion:
+        description: Special occasion (optional)
+        required: false
+      tone:
+        description: Tone of the greeting (e.g., formal, casual, enthusiastic)
+        required: false
+```
 
 ---
 
