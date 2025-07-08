@@ -906,7 +906,8 @@ class TestValidateConfig:
             "other_section": {},
         }
         with pytest.raises(
-            ValueError, match="Configuration must contain a 'tools' and/or 'prompts' section",
+            ValueError,
+            match="Configuration must contain a 'tools', 'prompts', and/or 'openapi' section",
         ):
             validate_config(invalid_config)
 

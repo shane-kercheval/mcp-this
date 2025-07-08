@@ -138,9 +138,11 @@ def validate_config(config: dict) -> None:
     if not isinstance(config, dict):
         raise ValueError("Configuration must be a dictionary")
 
-    # Check if we have at least a tools or prompts section
-    if 'tools' not in config and 'prompts' not in config:
-        raise ValueError("Configuration must contain a 'tools' and/or 'prompts' section")
+    # Check if we have at least a tools, prompts, or openapi section
+    if 'tools' not in config and 'prompts' not in config and 'openapi' not in config:
+        raise ValueError(
+            "Configuration must contain a 'tools', 'prompts', and/or 'openapi' section",
+        )
 
     # Validate tools section if present
     if 'tools' in config:
@@ -158,6 +160,11 @@ def validate_config(config: dict) -> None:
 
         for prompt_name, prompt_config in config['prompts'].items():
             validate_prompt_config(prompt_name, prompt_config)
+
+    # Validate openapi section if present
+    if 'openapi' in config:
+        from mcp_this.openapi_tools import validate_openapi_configs
+        validate_openapi_configs(config['openapi'])
 
 
 def validate_tool_config(tool_id: str, tool_config: dict) -> None:
@@ -276,9 +283,9 @@ def register_tools(config: dict) -> None:
     register_parsed_tools(tools_info)
 
 
-def register_all(config: dict) -> None:
+async def register_all(config: dict) -> None:
     """
-    Register both tools and prompts from configuration.
+    Register tools, prompts, and OpenAPI tools from configuration.
 
     Args:
         config: The configuration dictionary.
@@ -291,6 +298,12 @@ def register_all(config: dict) -> None:
     if 'prompts' in config:
         prompts_info = parse_prompts(config)
         register_prompts(prompts_info)
+
+    # Register OpenAPI tools if present
+    if 'openapi' in config:
+        from mcp_this.openapi_tools import parse_openapi_configs, register_openapi_tools
+        api_tools_info = await parse_openapi_configs(config['openapi'])
+        register_openapi_tools(api_tools_info)
 
 
 def init_server(config_path: str | None = None, tools: str | None = None) -> None:
@@ -311,7 +324,10 @@ def init_server(config_path: str | None = None, tools: str | None = None) -> Non
     """
     config = load_config(config_path, tools)
     validate_config(config)
-    register_all(config)
+
+    # Handle async registration
+    import asyncio
+    asyncio.run(register_all(config))
 
 
 def run_server() -> None:

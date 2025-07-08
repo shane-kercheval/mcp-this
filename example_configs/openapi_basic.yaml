@@ -1,0 +1,46 @@
+# Basic OpenAPI configuration example for mcp-this
+# This demonstrates the configuration syntax
+
+# NOTE: The example below uses Petstore API which is Swagger 2.0 format.
+# For best results, use OpenAPI 3.0+ specifications.
+# Uncomment the section below to test with a real API that supports OpenAPI 3.0:
+
+# openapi:
+#   httpbin:
+#     spec_url: "https://httpbin.org/spec.json"  # OpenAPI 3.0 spec
+#     base_url: "https://httpbin.org"
+#     include_patterns: ["^/get", "^/post", "^/status"]
+#     tool_prefix: "httpbin"
+#     retry:
+#       max_attempts: 3
+#       timeout: 30
+
+# You can still include regular CLI tools alongside OpenAPI tools
+tools:
+  echo:
+    description: "Echo a message"
+    execution:
+      command: "echo"
+      args: ["{{message}}"]
+    parameters:
+      message:
+        description: "Message to echo"
+        required: true
+
+# And prompts too
+prompts:
+  analyze_api_data:
+    description: "Analyze API response data"
+    template: |
+      Please analyze the following API response data:
+      
+      {{data}}
+      
+      Provide a summary of:
+      - Key data points
+      - Data structure
+      - Potential insights
+    arguments:
+      data:
+        description: "The API response data to analyze"
+        required: true

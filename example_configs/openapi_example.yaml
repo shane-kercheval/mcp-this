@@ -1,0 +1,92 @@
+# Example OpenAPI configuration for mcp-this
+# This demonstrates how to configure OpenAPI/Swagger APIs as MCP tools
+
+openapi:
+  # JSONPlaceholder - Public API for testing (no auth required)
+  jsonplaceholder:
+    spec_url: "https://jsonplaceholder.typicode.com/openapi.json"
+    include_patterns: ["^/posts", "^/users", "^/comments"]
+    exclude_patterns: []
+    tool_prefix: "jsonplaceholder"
+    retry:
+      max_attempts: 3
+      timeout: 30
+
+  # Petstore - Classic OpenAPI example (public API)
+  petstore:
+    spec_url: "https://petstore.swagger.io/v2/swagger.json"
+    include_patterns: ["^/pet", "^/store"]
+    exclude_patterns: ["^/user"]
+    tool_prefix: "petstore"
+    retry:
+      max_attempts: 2
+      timeout: 45
+
+  # GitHub API - Example with authentication
+  # NOTE: This would require setting GITHUB_TOKEN environment variable
+  # github:
+  #   spec_url: "https://api.github.com/openapi.json"
+  #   auth:
+  #     type: "bearer"
+  #     token: "${GITHUB_TOKEN}"
+  #   include_patterns: ["^/repos", "^/user"]
+  #   exclude_patterns: ["^/admin", "^/orgs/.*/actions"]
+  #   tool_prefix: "github"
+  #   retry:
+  #     max_attempts: 5
+  #     timeout: 60
+
+  # Example with API key authentication
+  # weather_api:
+  #   spec_url: "https://api.weatherapi.com/v1/openapi.json"
+  #   auth:
+  #     type: "api_key"
+  #     key_name: "X-API-Key"
+  #     key_value: "${WEATHER_API_KEY}"
+  #   include_patterns: ["^/current", "^/forecast"]
+  #   exclude_patterns: ["^/premium"]
+  #   tool_prefix: "weather"
+  #   retry:
+  #     max_attempts: 3
+  #     timeout: 30
+
+  # Example with local OpenAPI spec file
+  # internal_api:
+  #   spec_url: "file:///path/to/internal-api.json"
+  #   base_url: "https://internal-api.company.com"
+  #   auth:
+  #     type: "bearer"
+  #     token: "${INTERNAL_API_TOKEN}"
+  #   include_patterns: ["^/api/v1"]
+  #   exclude_patterns: ["^/api/v1/admin"]
+  #   tool_prefix: "internal"
+  #   retry:
+  #     max_attempts: 5
+  #     timeout: 90
+
+# You can still combine with regular CLI tools
+tools:
+  hello:
+    description: "Say hello"
+    execution:
+      command: "echo"
+      args: ["Hello, World!"]
+
+# And prompts
+prompts:
+  analyze_api_response:
+    description: "Analyze API response data"
+    template: |
+      Please analyze the following API response:
+      
+      {{response}}
+      
+      Provide insights about:
+      - Data structure
+      - Key fields
+      - Potential issues
+      - Recommendations
+    arguments:
+      response:
+        description: "The API response to analyze"
+        required: true

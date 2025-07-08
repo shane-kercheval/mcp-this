@@ -6,7 +6,99 @@
 
 ## 📋 Implementation Overview
 
-This implementation uses FastMCP (`fastmcp>=2.2.0`) to handle OpenAPI parsing, HTTP requests, authentication, and error handling. We extract tool information from FastMCP servers and integrate them into mcp-this using the existing tool registration patterns.
+### Goal
+Enable mcp-this to automatically generate MCP tools from OpenAPI specifications, allowing users to interact with REST APIs through MCP clients (like Claude Desktop) without writing custom code.
+
+### End State - User Experience
+
+**1. User Configuration (YAML)**
+Users create a single YAML file that combines CLI tools, prompts, AND OpenAPI specs:
+
+```yaml
+# mcp-config.yaml - Complete configuration
+openapi:
+  github_api:
+    spec_url: "https://api.github.com/openapi.json"
+    auth:
+      type: "bearer"
+      token: "${GITHUB_TOKEN}"  # From environment variable
+    include_patterns: ["^/repos", "^/user"]
+    exclude_patterns: ["^/admin"]
+  
+  petstore:
+    spec_url: "https://petstore.swagger.io/v2/swagger.json"
+    # No auth required for public API
+    
+  internal_api:
+    spec_url: "file:///path/to/company-api.json"
+    base_url: "https://api.company.com"  # Override base URL
+    auth:
+      type: "api_key"
+      key_name: "X-API-Key"
+      key_value: "${COMPANY_API_KEY}"
+    retry:
+      max_attempts: 5
+      timeout: 60
+
+# Existing sections continue to work unchanged
+tools:
+  my-cli-tool:
+    command: "echo"
+    args: ["Hello from CLI"]
+
+prompts:
+  analyze:
+    content: "Analyze this data: {data}"
+```
+
+**2. Environment Variables**
+Users set API keys/tokens in their environment:
+
+```bash
+export GITHUB_TOKEN="ghp_xxxxxxxxxxxx"
+export COMPANY_API_KEY="sk-xxxxxxxxxxxx"
+```
+
+**However: users can also set these values directly in the YAML file if they prefer. We should detect via regex or starts_with that the value is an environment variable and resolve it at runtime. We need to test both.**
+
+**3. MCP Client Configuration (Unchanged)**
+Users configure Claude Desktop (or other MCP clients) exactly as they do today:
+
+```json
+{
+  "mcpServers": {
+    "my-apis": {
+      "command": "mcp-this",
+      "args": ["--config", "/path/to/mcp-config.yaml"]
+    }
+  }
+}
+```
+
+**4. Generated Tools**
+
+From the GitHub API example above, users get auto-generated tools like:
+- `github_api__get_repos_owner_repo` - Get repository details
+- `github_api__post_repos_owner_repo_issues` - Create new issue
+- `github_api__get_user` - Get user profile
+
+**5. Tool Usage in Claude**
+
+Users can then ask Claude:
+> "Get details about the 'mcp-this' repository for user 'shanekercheval' and create an issue titled 'Feature Request' with description 'Add OpenAPI support'"
+
+Claude will automatically:
+1. Call `github_api__get_repos_owner_repo(owner="shanekercheval", repo="mcp-this")`
+2. Call `github_api__post_repos_owner_repo_issues(owner="shanekercheval", repo="mcp-this", title="Feature Request", body="Add OpenAPI support")`
+
+### Technical Implementation
+This implementation uses FastMCP (`fastmcp>=2.2.0`) to handle OpenAPI parsing, HTTP requests, and error handling. **mcp-this handles authentication** by parsing YAML configuration, resolving environment variables, and configuring httpx.AsyncClient with proper auth headers before passing it to FastMCP. We extract tool information from FastMCP servers and integrate them into mcp-this using the existing tool registration patterns.
+
+### Key Benefits
+- **Zero Code Required**: Users just provide OpenAPI specs and authentication
+- **Seamless Integration**: Works alongside existing CLI tools and prompts
+- **Production Ready**: Leverages FastMCP's robust HTTP handling and authentication
+- **Familiar Workflow**: Same mcp-this configuration and MCP client setup
 
 ## 🎯 Phase 1: Dependencies and Core Structure
 

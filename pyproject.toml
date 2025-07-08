@@ -21,6 +21,10 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "pyyaml",
     "mcp",
+    "fastmcp>=2.2.0",
+    "httpx>=0.24.0",
+    "pydantic>=2.0.0",
+    "aiofiles>=24.1.0",
 ]
 
 [dependency-groups]
@@ -35,6 +39,7 @@ dev = [
     "sik-llms",
     "mcp[cli]",
     "aiofiles>=24.1.0",
+    "respx>=0.20.0",
 ]
 
 [project.scripts]
