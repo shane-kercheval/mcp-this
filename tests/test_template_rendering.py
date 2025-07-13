@@ -11,6 +11,11 @@ class TestTemplateRendering:
         result = render_template("Hello {{name}}!", {"name": "World"})
         assert result == "Hello World!"
 
+    def test_template_with_no_variables(self):
+        """Test template rendering with no variables."""
+        result = render_template("Hello, World!", {})
+        assert result == "Hello, World!"
+
     def test_multiple_variable_substitution(self):
         """Test substitution of multiple variables."""
         template = "Hello {{name}}, welcome to {{place}}!"
