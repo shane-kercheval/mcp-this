@@ -676,9 +676,9 @@ class TestParseTools:
 
         tool = result[0]
         desc = tool.get_full_description()
-        assert "TOOL DESCRIPTION:" in desc
+        assert "Tool Description" in desc
         assert "A simple test tool" in desc
-        assert "COMMAND CALLED:" in desc
+        assert "Underlying Command Called" in desc
         assert "```\necho Test\n```" in desc
 
     def test_get_full_description_with_parameters(self):
@@ -708,14 +708,13 @@ class TestParseTools:
 
         tool = result[0]
         desc = tool.get_full_description()
-        assert "TOOL DESCRIPTION:" in desc
+        assert "Tool Description" in desc
         assert "A greeting tool" in desc
-        assert "COMMAND CALLED:" in desc
+        assert "Underlying Command Called" in desc
         assert "```\necho Hello, <<name>>!\n```" in desc
-        assert "Text like <<parameter_name>> (e.g." in desc
-        assert "PARAMETERS:" in desc
-        assert "- name [OPTIONAL] (string): Your name" in desc
-        assert "- greeting [REQUIRED] (string): Greeting to use" in desc
+        assert "Parameters" in desc
+        assert "- `name` [OPTIONAL] (string): Your name" in desc
+        assert "- `greeting` [REQUIRED] (string): Greeting to use" in desc
         assert "EXAMPLE USAGE:" not in desc
 
     def test_get_full_description_with_complex_command(self):
@@ -745,14 +744,13 @@ class TestParseTools:
 
         tool = result[0]
         desc = tool.get_full_description()
-        assert "TOOL DESCRIPTION:" in desc
+        assert "Tool Description" in desc
         assert "Find files with pattern" in desc
-        assert "COMMAND CALLED:" in desc
-        assert "```\nfind . -name \"<<pattern>>\" -type f | xargs grep \"<<content>>\"\n```" in desc
-        assert "Text like <<parameter_name>> (e.g." in desc
-        assert "PARAMETERS:" in desc
-        assert "- pattern [REQUIRED] (string): File pattern to search for" in desc
-        assert "- content [REQUIRED] (string): Content to find in files" in desc
+        assert "Underlying Command Called" in desc
+        assert "```\nfind . -name \"<<pattern>>\" -type f | xargs grep \"<<content>>\"\n```" in desc  # noqa: E501
+        assert "Parameters" in desc
+        assert "- `pattern` [REQUIRED] (string): File pattern to search for" in desc
+        assert "- `content` [REQUIRED] (string): Content to find in files" in desc
         assert "EXAMPLE USAGE:" not in desc
 
     def test_parameter_type_inference(self):
@@ -791,12 +789,11 @@ class TestParseTools:
         assert "(string)" in desc
 
         # Check for placeholder example
-        assert "Text like <<parameter_name>> (e.g." in desc
 
         # Verify the section headers
-        assert "TOOL DESCRIPTION:" in desc
-        assert "COMMAND CALLED:" in desc
-        assert "PARAMETERS:" in desc
+        assert "Tool Description" in desc
+        assert "Underlying Command Called" in desc
+        assert "Parameters" in desc
 
         # Verify that EXAMPLE USAGE is not present
         assert "EXAMPLE USAGE:" not in desc
@@ -827,11 +824,11 @@ class TestParseTools:
         desc = result[0].get_full_description()
 
         # Should have PARAMETERS section
-        assert "PARAMETERS:" in desc
+        assert "Parameters" in desc
         # Empty description should not have trailing colon
-        assert "- param1 [REQUIRED] (string)\n" in desc
+        assert "- `param1` [REQUIRED] (string)\n" in desc
         # Non-empty description should have colon
-        assert "- param2 [OPTIONAL] (string): Has description" in desc
+        assert "- `param2` [OPTIONAL] (string): Has description" in desc
 
     def test_get_full_description_no_parameters(self):
         """Test get_full_description with no parameters at all."""
@@ -849,12 +846,12 @@ class TestParseTools:
         desc = result[0].get_full_description()
 
         # Should have description and command
-        assert "TOOL DESCRIPTION:" in desc
+        assert "Tool Description" in desc
         assert "Simple tool with no params" in desc
-        assert "UNDERLYING COMMAND CALLED:" in desc
+        assert "Underlying Command Called" in desc
         assert "```\nls -la\n```" in desc
         # Should NOT have PARAMETERS section
-        assert "PARAMETERS:" not in desc
+        assert "Parameters" not in desc
         # Should NOT have placeholder explanation
         assert "Text like <<parameter_name>>" not in desc
 
@@ -874,8 +871,8 @@ class TestParseTools:
         desc = result[0].get_full_description()
 
         # Should still have structure even with empty description
-        assert "TOOL DESCRIPTION:" in desc
-        assert "UNDERLYING COMMAND CALLED:" in desc
+        assert "Tool Description" in desc
+        assert "Underlying Command Called" in desc
         assert "```\necho test\n```" in desc
 
 
