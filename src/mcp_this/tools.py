@@ -32,29 +32,22 @@ class ToolInfo:
         lines = []
 
         # Start with a clear TOOL DESCRIPTION section
-        lines.append("TOOL DESCRIPTION:")
-        lines.append("")
+        lines.append("TOOL DESCRIPTION:\n")
         lines.append(self.description.strip())
 
         # Add the COMMAND section showing the template
-        lines.append("")
-        lines.append("COMMAND CALLED:")
-        lines.append("")
-        lines.append(f"`{self.command_template}`")
+        lines.append("\nUNDERLYING COMMAND CALLED:\n")
+        lines.append(f"```\n{self.command_template}`\n```")
 
         # Add clarification on what the placeholders mean, if there are parameters
         if "<<" in self.command_template and self.parameters:
             # Get the first parameter name to use as example
             first_param = next(iter(self.parameters.keys()), "parameter")
-            lines.append("")
-            lines.append(f"Text like <<parameter_name>> (e.g. <<{first_param}>>) will be replaced with parameter values.")  # noqa: E501
+            lines.append(f"\nText like <<parameter_name>> (e.g. <<{first_param}>>) will be replaced with parameter values.")  # noqa: E501
 
         # Add PARAMETERS section with clearly marked requirements
         if self.parameters:
-            lines.append("")
-            lines.append("PARAMETERS:")
-            lines.append("")
-
+            lines.append("\nPARAMETERS:\n")
             # Add each parameter with its description and inferred type
             for param_name, param_config in self.parameters.items():
                 desc = param_config.get("description", "")
@@ -76,9 +69,7 @@ class ToolInfo:
         has_file_write_operation = any(op in cmd_lower for op in file_write_operators)
 
         if has_dangerous_operation or has_file_write_operation:
-            lines.append("")
-            lines.append("IMPORTANT NOTES:")
-            lines.append("")
+            lines.append("\nIMPORTANT NOTES:\n")
             if any(op in cmd_lower for op in ["rm ", "remove ", "delete "]):
                 lines.append("- This command can DELETE files or data. Use with caution.")
             if any(op in cmd_lower for op in ["mv ", "move "]):

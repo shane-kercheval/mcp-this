@@ -2111,9 +2111,7 @@ def test_generate_tool_descriptions_documentation() -> None:
     for tool_info in tools_info:
         lines.append(f"## Tool: `{tool_info.tool_name}`\n")
         lines.append("\n")
-        lines.append("```\n")
         lines.append(tool_info.get_full_description())
-        lines.append("\n")
         lines.append("```\n")
         lines.append("\n")
         lines.append("---\n")
