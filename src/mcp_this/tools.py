@@ -4,6 +4,18 @@ import traceback
 import asyncio
 import subprocess
 from dataclasses import dataclass
+from pathlib import Path
+from jinja2 import Environment, FileSystemLoader
+
+
+# Set up Jinja2 environment for template rendering (cached at module level)
+_template_dir = Path(__file__).parent / "templates"
+_jinja_env = Environment(
+    loader=FileSystemLoader(_template_dir),
+    trim_blocks=True,
+    lstrip_blocks=True,
+)
+_tool_description_template = _jinja_env.get_template("tool_description.md.jinja2")
 
 
 @dataclass
@@ -26,68 +38,33 @@ class ToolInfo:
         Format is designed to help LLMs understand the tool purpose,
         command structure, and parameter requirements clearly.
 
+        Uses a Jinja2 template for consistent formatting.
+
         Returns:
             A formatted description with key sections highlighted for LLM processing.
         """
-        lines = []
+        # Prepare data for template
+        has_parameters = bool(self.parameters) and "<<" in self.command_template
+        first_param = next(iter(self.parameters.keys()), "parameter") if self.parameters else None
 
-        # Start with a clear TOOL DESCRIPTION section
-        lines.append("TOOL DESCRIPTION:")
-        lines.append("")
-        lines.append(self.description.strip())
+        # Transform parameters dict into list for template
+        parameters_list = []
+        for param_name, param_config in self.parameters.items():
+            parameters_list.append({
+                "name": param_name,
+                "description": param_config.get("description", ""),
+                "required": param_config.get("required", False),
+                "type": "string",  # All parameters are strings for CLI commands
+            })
 
-        # Add the COMMAND section showing the template
-        lines.append("")
-        lines.append("COMMAND CALLED:")
-        lines.append("")
-        lines.append(f"`{self.command_template}`")
-
-        # Add clarification on what the placeholders mean, if there are parameters
-        if "<<" in self.command_template and self.parameters:
-            # Get the first parameter name to use as example
-            first_param = next(iter(self.parameters.keys()), "parameter")
-            lines.append("")
-            lines.append(f"Text like <<parameter_name>> (e.g. <<{first_param}>>) will be replaced with parameter values.")  # noqa: E501
-
-        # Add PARAMETERS section with clearly marked requirements
-        if self.parameters:
-            lines.append("")
-            lines.append("PARAMETERS:")
-            lines.append("")
-
-            # Add each parameter with its description and inferred type
-            for param_name, param_config in self.parameters.items():
-                desc = param_config.get("description", "")
-                required = param_config.get("required", False)
-                req_status = "[REQUIRED]" if required else "[OPTIONAL]"
-
-                # All parameters are treated as strings for CLI commands
-                param_type = "(string)"
-
-                lines.append(f"- {param_name} {req_status}{' ' + param_type if param_type else ''}: {desc}")  # noqa: E501
-
-
-        # Add NOTES section if the command could have side effects
-        cmd_lower = self.command_template.lower()
-        dangerous_operations = ["rm ", "remove ", "delete ", "mv ", "move ", "write ", "create "]
-        file_write_operators = [" > ", " >> ", "echo ", "cat ", "touch "]
-
-        has_dangerous_operation = any(op in cmd_lower for op in dangerous_operations)
-        has_file_write_operation = any(op in cmd_lower for op in file_write_operators)
-
-        if has_dangerous_operation or has_file_write_operation:
-            lines.append("")
-            lines.append("IMPORTANT NOTES:")
-            lines.append("")
-            if any(op in cmd_lower for op in ["rm ", "remove ", "delete "]):
-                lines.append("- This command can DELETE files or data. Use with caution.")
-            if any(op in cmd_lower for op in ["mv ", "move "]):
-                lines.append("- This command can MOVE files or data. Verify paths are correct.")
-            if any(op in cmd_lower for op in ["write ", "create "]) or " > " in cmd_lower or " >> " in cmd_lower:  # noqa: E501
-                lines.append("- This command can CREATE or MODIFY files or data.")
-
-        # Join all lines with newlines to form the complete description
-        return "\n".join(lines)
+        # Render template
+        return _tool_description_template.render(
+            tool_description=self.description.strip(),
+            command_template=self.command_template,
+            has_parameters=has_parameters,
+            first_param=first_param,
+            parameters=parameters_list,
+        )
 
 
 def build_command(command_template: str, parameters: dict[str, str]) -> str:
