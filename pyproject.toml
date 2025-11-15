@@ -21,6 +21,7 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "pyyaml",
     "mcp",
+    "jinja2>=3.1.6",
 ]
 
 [dependency-groups]
@@ -45,7 +46,10 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mcp_this"]
-include = ["src/mcp_this/configs/*.yaml"]
+include = [
+    "src/mcp_this/configs/*.yaml",
+    "src/mcp_this/templates/*.jinja2",
+]
 
 [build-system]
 requires = ["hatchling>=1.17.1"]

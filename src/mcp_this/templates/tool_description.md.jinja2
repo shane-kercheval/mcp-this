@@ -1,0 +1,20 @@
+TOOL DESCRIPTION:
+
+{{ tool_description }}
+
+UNDERLYING COMMAND CALLED:
+
+```
+{{ command_template }}
+```
+{% if has_parameters %}
+
+Text like <<parameter_name>> (e.g. <<{{ first_param }}>>) will be replaced with parameter values.
+{% endif %}
+{% if parameters %}
+
+PARAMETERS:
+{% for param in parameters %}
+- {{ param.name }} [{{ 'REQUIRED' if param.required else 'OPTIONAL' }}] ({{ param.type }}): {{ param.description }}
+{% endfor %}
+{% endif %}

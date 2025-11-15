@@ -2010,7 +2010,7 @@ class TestWebScraper:
             # Check for expected content in the output
             # example.com is very stable and should contain these phrases
             assert "Example Domain" in result_text
-            assert "illustrative examples" in result_text
+            assert "documentation examples" in result_text
 
     async def test_with_dump_options(
         self,

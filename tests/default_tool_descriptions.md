@@ -18,17 +18,15 @@ Examples:
 
 UNDERLYING COMMAND CALLED:
 
-```
-tree '<<directory>>' -a --gitignore -I ".git|.claude|.env|.venv|env|node_modules|__pycache__|.DS_Store|*.pyc" -I "<<custom_excludes>>" <<format_args>>`
-```
+`tree '<<directory>>' -a --gitignore -I ".git|.claude|.env|.venv|env|node_modules|__pycache__|.DS_Store|*.pyc" -I "<<custom_excludes>>" <<format_args>>`
 
 Text like <<parameter_name>> (e.g. <<directory>>) will be replaced with parameter values.
 
 PARAMETERS:
-
 - directory [REQUIRED] (string): Directory to generate tree for (quotes are handled automatically in the command)
 - custom_excludes [OPTIONAL] (string): Additional patterns to exclude. Use pipe-separated values for multiple exclusions (e.g., "build|dist|target" or just "build" for single exclusion). Probably not needed if there is a .gitignore file.
-- format_args [OPTIONAL] (string): Additional tree command options (e.g., "-L 3 -C --dirsfirst")```
+- format_args [OPTIONAL] (string): Additional tree command options (e.g., "-L 3 -C --dirsfirst")
+```
 
 ---
 
@@ -48,8 +46,7 @@ Examples:
 
 UNDERLYING COMMAND CALLED:
 
-```
-if [ ! -d '<<directory>>' ]; then 
+`if [ ! -d '<<directory>>' ]; then 
   echo "Directory does not exist: <<directory>>"; 
 else
   cd '<<directory>>' &&
@@ -94,18 +91,14 @@ else
     echo "<<arguments>>";
   } | tr '\n' ' ' | xargs find | sort;
 fi`
-```
 
 Text like <<parameter_name>> (e.g. <<directory>>) will be replaced with parameter values.
 
 PARAMETERS:
-
 - directory [REQUIRED] (string): Directory to search in (quotes are handled automatically in the command)
 - arguments [OPTIONAL] (string): Additional find criteria and options (e.g., "-name *.py -mtime -7 -size +1M"). These are appended to the find command after all exclusions.
 - exclude_paths [OPTIONAL] (string): Additional path patterns to exclude, pipe-separated (e.g., "./build/*|./dist/*|./target/*")
 - exclude_files [OPTIONAL] (string): Additional file patterns to exclude, pipe-separated (e.g., "*.log|*.tmp|*.bak")
-
-IMPORTANT NOTES:
 ```
 
 ---
@@ -132,8 +125,7 @@ Output Example:
 
 UNDERLYING COMMAND CALLED:
 
-```
-if [ ! -d '<<directory>>' ]; then 
+`if [ ! -d '<<directory>>' ]; then 
   echo "Directory does not exist: <<directory>>"; 
 else
   cd '<<directory>>' &&
@@ -144,19 +136,15 @@ $(if [ -n '<<exclude_files>>' ]; then
     echo '<<exclude_files>>' | sed 's/|/ --exclude=/g' | sed 's/^/--exclude=/'; 
   fi);
 fi`
-```
 
 Text like <<parameter_name>> (e.g. <<pattern>>) will be replaced with parameter values.
 
 PARAMETERS:
-
 - pattern [REQUIRED] (string): Text pattern to search for (supports regex, quotes are handled automatically in the command)
 - directory [REQUIRED] (string): Directory to search in (quotes are handled automatically in the command)
 - arguments [OPTIONAL] (string): Additional grep options (e.g., "-i" for case-insensitive, "-A 3 -B 2" for context lines, "--include=*.py" for file filtering). These are placed before the pattern in the grep command.
 - exclude_paths [OPTIONAL] (string): Additional directory patterns to exclude, pipe-separated (e.g., "build|dist|target")
 - exclude_files [OPTIONAL] (string): Additional file patterns to exclude, pipe-separated (e.g., "*.log|*.tmp|*.bak")
-
-IMPORTANT NOTES:
 ```
 
 ---
@@ -186,18 +174,13 @@ Examples:
 
 UNDERLYING COMMAND CALLED:
 
-```
-cat '<<file>>' <<arguments>> | nl -ba`
-```
+`cat '<<file>>' <<arguments>> | nl -ba`
 
 Text like <<parameter_name>> (e.g. <<file>>) will be replaced with parameter values.
 
 PARAMETERS:
-
 - file [REQUIRED] (string): Path to the file to display (quotes are handled automatically in the command)
 - arguments [OPTIONAL] (string): Post-processing pipe operations only (e.g., "| sed -n '10,20p'" to show specific line range, "| python3 -m json.tool" to format JSON, "| grep ERROR" to filter lines). Do NOT use for cat options like -n or -b.
-
-IMPORTANT NOTES:
 ```
 
 ---
@@ -220,8 +203,7 @@ Examples:
 
 UNDERLYING COMMAND CALLED:
 
-```
-for file in $(find <<files>> -type f  -not -path "*/.git/*" -not -path "*/.claude/*" -not -path "*/.env/*" -not -path "*/.venv/*" -not -path "*/env/*" -not -path "*/node_modules/*" -not -path "*/__pycache__/*" -not -name ".DS_Store" $(if [ -n "<<exclude_paths>>" ]; then 
+`for file in $(find <<files>> -type f  -not -path "*/.git/*" -not -path "*/.claude/*" -not -path "*/.env/*" -not -path "*/.venv/*" -not -path "*/env/*" -not -path "*/node_modules/*" -not -path "*/__pycache__/*" -not -name ".DS_Store" $(if [ -n "<<exclude_paths>>" ]; then 
     echo "<<exclude_paths>>" | tr '|' '\n' | while read -r path; do
       [ -n "$path" ] && echo "-not -path \"*/$path/*\"";
     done;
@@ -239,18 +221,14 @@ $(if [ -n "<<exclude_files>>" ]; then
   if echo "<<types>>" | grep -q "todos"; then echo "--- todos ---"; grep -n -i "TODO\|FIXME" "$file" 2>/dev/null || echo "No TODOs found"; fi;
   echo "";
 done`
-```
 
 Text like <<parameter_name>> (e.g. <<files>>) will be replaced with parameter values.
 
 PARAMETERS:
-
 - files [REQUIRED] (string): File pattern to analyze (e.g., "*.py", "src/*.js", "/path/to/file.py")
 - types [REQUIRED] (string): Comma-separated list of information types to extract (functions, classes, imports, todos)
 - exclude_paths [OPTIONAL] (string): Additional directory patterns to exclude, pipe-separated (e.g., "build|dist|target")
 - exclude_files [OPTIONAL] (string): Additional file patterns to exclude, pipe-separated (e.g., "*_test.py|*_backup.py")
-
-IMPORTANT NOTES:
 ```
 
 ---
@@ -269,16 +247,14 @@ Examples:
 
 UNDERLYING COMMAND CALLED:
 
-```
-lynx -dump -nomargins -hiddenlinks=ignore <<dump_options>> '<<url>>'`
-```
+`lynx -dump -nomargins -hiddenlinks=ignore <<dump_options>> '<<url>>'`
 
 Text like <<parameter_name>> (e.g. <<url>>) will be replaced with parameter values.
 
 PARAMETERS:
-
 - url [REQUIRED] (string): Full URL of the webpage to fetch and convert to text (must include http:// or https://)
-- dump_options [OPTIONAL] (string): Additional lynx options (e.g., -width=100, -nolist, -source)```
+- dump_options [OPTIONAL] (string): Additional lynx options (e.g., -width=100, -nolist, -source)
+```
 
 ---
 
