@@ -679,7 +679,7 @@ class TestParseTools:
         assert "TOOL DESCRIPTION:" in desc
         assert "A simple test tool" in desc
         assert "COMMAND CALLED:" in desc
-        assert "`echo Test`" in desc
+        assert "```\necho Test\n```" in desc
 
     def test_get_full_description_with_parameters(self):
         """Test get_full_description for a tool with parameters."""
@@ -711,7 +711,7 @@ class TestParseTools:
         assert "TOOL DESCRIPTION:" in desc
         assert "A greeting tool" in desc
         assert "COMMAND CALLED:" in desc
-        assert "`echo Hello, <<name>>!`" in desc
+        assert "```\necho Hello, <<name>>!\n```" in desc
         assert "Text like <<parameter_name>> (e.g." in desc
         assert "PARAMETERS:" in desc
         assert "- name [OPTIONAL] (string): Your name" in desc
@@ -748,7 +748,7 @@ class TestParseTools:
         assert "TOOL DESCRIPTION:" in desc
         assert "Find files with pattern" in desc
         assert "COMMAND CALLED:" in desc
-        assert "`find . -name \"<<pattern>>\" -type f | xargs grep \"<<content>>\"`" in desc
+        assert "```\nfind . -name \"<<pattern>>\" -type f | xargs grep \"<<content>>\"\n```" in desc
         assert "Text like <<parameter_name>> (e.g." in desc
         assert "PARAMETERS:" in desc
         assert "- pattern [REQUIRED] (string): File pattern to search for" in desc
@@ -801,84 +801,82 @@ class TestParseTools:
         # Verify that EXAMPLE USAGE is not present
         assert "EXAMPLE USAGE:" not in desc
 
-    def test_get_full_description_important_notes(self):
-        """
-        Test that the get_full_description method adds safety notes for commands with side
-        effects.
-        """
-        # Test delete command
-        delete_config = {
+    def test_get_full_description_empty_parameter_description(self):
+        """Test get_full_description with empty parameter descriptions."""
+        config = {
             "tools": {
-                "remove": {
-                    "description": "Delete a file",
+                "test": {
+                    "description": "Test tool",
                     "execution": {
-                        "command": "rm <<file_path>>",
+                        "command": "echo <<param1>> <<param2>>",
                     },
                     "parameters": {
-                        "file_path": {
-                            "description": "Path to file to delete",
+                        "param1": {
+                            "description": "",
                             "required": True,
+                        },
+                        "param2": {
+                            "description": "Has description",
+                            "required": False,
                         },
                     },
                 },
             },
         }
-        result = parse_tools(delete_config)
+        result = parse_tools(config)
         desc = result[0].get_full_description()
-        assert "IMPORTANT NOTES:" in desc
-        assert "This command can DELETE files or data. Use with caution." in desc
 
-        # Test move command
-        move_config = {
-            "tools": {
-                "move": {
-                    "description": "Move a file",
-                    "execution": {
-                        "command": "mv <<source>> <<destination>>",
-                    },
-                    "parameters": {
-                        "source": {
-                            "description": "Source path",
-                            "required": True,
-                        },
-                        "destination": {
-                            "description": "Destination path",
-                            "required": True,
-                        },
-                    },
-                },
-            },
-        }
-        result = parse_tools(move_config)
-        desc = result[0].get_full_description()
-        assert "IMPORTANT NOTES:" in desc
-        assert "This command can MOVE files or data. Verify paths are correct." in desc
+        # Should have PARAMETERS section
+        assert "PARAMETERS:" in desc
+        # Empty description should not have trailing colon
+        assert "- param1 [REQUIRED] (string)\n" in desc
+        # Non-empty description should have colon
+        assert "- param2 [OPTIONAL] (string): Has description" in desc
 
-        # Test write command
-        write_config = {
+    def test_get_full_description_no_parameters(self):
+        """Test get_full_description with no parameters at all."""
+        config = {
             "tools": {
-                "create": {
-                    "description": "Create a new file",
+                "simple": {
+                    "description": "Simple tool with no params",
                     "execution": {
-                        "command": "echo <<content>> > <<file_path>>",
-                    },
-                    "parameters": {
-                        "content": {
-                            "description": "Content to write",
-                            "required": True,
-                        },
-                        "file_path": {
-                            "description": "Path to output file",
-                            "required": True,
-                        },
+                        "command": "ls -la",
                     },
                 },
             },
         }
-        result = parse_tools(write_config)
+        result = parse_tools(config)
         desc = result[0].get_full_description()
-        assert "IMPORTANT NOTES:" in desc
-        assert "This command can CREATE or MODIFY files or data." in desc
+
+        # Should have description and command
+        assert "TOOL DESCRIPTION:" in desc
+        assert "Simple tool with no params" in desc
+        assert "UNDERLYING COMMAND CALLED:" in desc
+        assert "```\nls -la\n```" in desc
+        # Should NOT have PARAMETERS section
+        assert "PARAMETERS:" not in desc
+        # Should NOT have placeholder explanation
+        assert "Text like <<parameter_name>>" not in desc
+
+    def test_get_full_description_empty_tool_description(self):
+        """Test get_full_description with empty tool description."""
+        config = {
+            "tools": {
+                "test": {
+                    "description": "",
+                    "execution": {
+                        "command": "echo test",
+                    },
+                },
+            },
+        }
+        result = parse_tools(config)
+        desc = result[0].get_full_description()
+
+        # Should still have structure even with empty description
+        assert "TOOL DESCRIPTION:" in desc
+        assert "UNDERLYING COMMAND CALLED:" in desc
+        assert "```\necho test\n```" in desc
 
 
 class TestValidateConfig:
